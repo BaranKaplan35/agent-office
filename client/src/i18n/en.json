@@ -1,0 +1,22 @@
+{
+  "app.name": "AgentOffice",
+  "app.tagline": "Your AI team, one desk each.",
+  "header.team": "Team",
+  "header.teamPlaceholder": "No team templates loaded",
+  "header.language": "Language",
+  "status.connecting": "Connecting…",
+  "status.online": "Server online · {{provider}}",
+  "status.offline": "Server offline",
+  "office.title": "Office",
+  "office.emptyTitle": "The office is quiet",
+  "office.emptyBody": "Pick a team template and the desks will fill up.",
+  "panel.queue": "Review queue",
+  "panel.report": "Report",
+  "panel.queueEmptyTitle": "Nothing to review yet",
+  "panel.queueEmptyBody": "When an agent delivers a report, it lands here for your approval.",
+  "panel.reportEmpty": "Select a report from the queue or click a desk to read it.",
+  "task.label": "Task",
+  "task.placeholder": "Describe what the team should produce…",
+  "task.send": "Send to team",
+  "task.disabledHint": "Choose a team first."
+}

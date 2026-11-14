@@ -1,0 +1,22 @@
+{
+  "app.name": "AgentOffice",
+  "app.tagline": "Yapay zekâ ekibin, herkese bir masa.",
+  "header.team": "Ekip",
+  "header.teamPlaceholder": "Yüklü ekip şablonu yok",
+  "header.language": "Dil",
+  "status.connecting": "Bağlanıyor…",
+  "status.online": "Sunucu çevrimiçi · {{provider}}",
+  "status.offline": "Sunucu çevrimdışı",
+  "office.title": "Ofis",
+  "office.emptyTitle": "Ofis şu an sessiz",
+  "office.emptyBody": "Bir ekip şablonu seç, masalar dolsun.",
+  "panel.queue": "Onay kuyruğu",
+  "panel.report": "Rapor",
+  "panel.queueEmptyTitle": "Henüz incelenecek bir şey yok",
+  "panel.queueEmptyBody": "Bir ajan raporunu teslim ettiğinde onayın için buraya düşer.",
+  "panel.reportEmpty": "Okumak için kuyruktan bir rapor seç ya da bir masaya tıkla.",
+  "task.label": "Görev",
+  "task.placeholder": "Ekibin ne üretmesini istediğini yaz…",
+  "task.send": "Ekibe gönder",
+  "task.disabledHint": "Önce bir ekip seç."
+}

@@ -1,0 +1,100 @@
+/*
+ * "Daylight Studio" palette: warm paper floor, deep teal, apricot accent.
+ * Every colour in the app comes from these tokens. Agent desk colours come
+ * from the team config instead.
+ */
+:root {
+  --bg: #f6f3ee;
+  --surface: #ffffff;
+  --surface-2: #faf8f4;
+  --ink: #1e2328;
+  --muted: #6b7280;
+  --line: #e4ddd1;
+
+  --primary: #0f766e;
+  --primary-ink: #ffffff;
+  --primary-soft: #d5ede9;
+  --accent: #f59e5b;
+  --accent-soft: #fde9d9;
+
+  --success: #22a06b;
+  --warning: #e8b53a;
+  --danger: #e5484d;
+
+  --floor-a: #e9e3d8;
+  --floor-b: #e2dacc;
+  --wall: #d7cfc2;
+  --wall-shade: #cbc2b3;
+
+  /* Agent status colours */
+  --status-working: var(--primary);
+  --status-review: var(--accent);
+  --status-approved: var(--success);
+  --status-failed: var(--danger);
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --shadow: 0 1px 2px rgb(30 35 40 / 6%), 0 4px 16px rgb(30 35 40 / 6%);
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #14171c;
+    --surface: #1c2027;
+    --surface-2: #181c22;
+    --ink: #e8e6e1;
+    --muted: #9aa1ac;
+    --line: #2c323c;
+
+    --primary: #2dd4bf;
+    --primary-ink: #0b1f1d;
+    --primary-soft: #153a37;
+    --accent: #f7b07a;
+    --accent-soft: #3b2a1e;
+
+    --success: #3ccf8e;
+    --warning: #f2c75c;
+    --danger: #f47075;
+
+    --floor-a: #232831;
+    --floor-b: #1f242c;
+    --wall: #2a303a;
+    --wall-shade: #242932;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #14171c;
+  --surface: #1c2027;
+  --surface-2: #181c22;
+  --ink: #e8e6e1;
+  --muted: #9aa1ac;
+  --line: #2c323c;
+
+  --primary: #2dd4bf;
+  --primary-ink: #0b1f1d;
+  --primary-soft: #153a37;
+  --accent: #f7b07a;
+  --accent-soft: #3b2a1e;
+
+  --success: #3ccf8e;
+  --warning: #f2c75c;
+  --danger: #f47075;
+
+  --floor-a: #232831;
+  --floor-b: #1f242c;
+  --wall: #2a303a;
+  --wall-shade: #242932;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
+  color-scheme: dark;
+}
