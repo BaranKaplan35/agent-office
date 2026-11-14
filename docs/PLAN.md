@@ -10,7 +10,7 @@ Vitest. Shared types for teams, tasks, subtasks, report versions, agent messages
 API/SSE shapes. Express app with `/api/health` and env validation. Empty three-panel
 UI with the "Daylight Studio" palette (light + dark), EN/TR i18n, server status pill.
 
-## Phase 1a — Backend core (mock)
+## Phase 1a — Backend core (mock) ✅
 
 - `teams/*.yaml` loader + zod schema (1 coordinator, 2–5 workers, unique ids,
   valid `dependsOn`, no cycles, hex colours); a test validates every team file

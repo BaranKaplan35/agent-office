@@ -70,13 +70,30 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 
 - `shared/src/types.ts` — teams, tasks, subtasks, messages, API/SSE shapes
 - `server/src/env.ts` — environment parsing (one readable error for all problems)
-- `server/src/app.ts` — Express app factory (`createApp(env)`, used by tests)
-- `server/src/orchestrator/` — task/subtask state machine, prompts, plan parser (phase 1a)
+- `server/src/app.ts` — Express app factory (`createApp({ env, teams, orchestrator })`, used by tests)
+- `teams/*.yaml` — team templates; `server/src/teams/` — zod schema, loader/registry
+  (hot reload in dev), `defaultPlan.ts` (one subtask per worker along `dependsOn`)
+- `server/src/llm/` — `index.ts` picks the provider, `mock.ts`, `limiter.ts` (concurrency)
+- `server/src/orchestrator/orchestrator.ts` — task/subtask state machine, scheduling,
+  revisions, merge, cancel, timeouts, event publishing
+- `server/src/orchestrator/prompts.ts` — plan / work / revision / merge prompts;
+  `planParser.ts` — sanitises the coordinator's JSON plan (falls back to `defaultPlan`)
+- `server/src/http/` — `routes.ts` (REST), `sse.ts` (event stream), `errors.ts`
+- `server/src/test/fixtures.ts` — test team, scripted providers, `waitFor` helper
 - `client/src/office/` — 3D office (phase 1c):
   `OfficeStage.tsx` (lazy load, WebGL fallback, quality), `scene/` (canvas, camera,
   lighting, `daylight.ts`), `models/` (procedural props), `characters/` (rig, poses,
   `activities.ts`), `navigation/` (grid + A*), `layout.ts` (hub-and-spoke, 3–6 agents)
 - `client/src/styles/tokens.css` — "Daylight Studio" colour tokens (light + dark)
+
+## API (all JSON, prefix `/api`)
+
+- `GET /health` · `GET /teams` · `GET /teams/:teamId` (public view, no prompts)
+- `POST /tasks {teamId, prompt, lang}` → `201 {taskId}` · `GET /tasks/:id` (snapshot)
+- `GET /tasks/:id/events` — SSE; first event is a snapshot, then one event per change
+- `POST /tasks/:id/subtasks/:subId/{approve|revise|retry}` (`revise` body: `{note}`)
+- `POST /tasks/:id/final/{approve|revise|retry}` · `POST /tasks/:id/cancel`
+- Errors: `{error: {code, message}}` — 400 validation, 404 not_found, 409 invalid_state / revision_limit
 
 ## Conventions
 
@@ -95,7 +112,7 @@ the current phase is finished, never mid-phase.
 ## Status
 
 - [x] Phase 0 — skeleton, tooling, shared types, palette, empty layout, i18n, health endpoint
-- [ ] Phase 1a — team loader + schema, mock provider, orchestrator, REST + SSE
+- [x] Phase 1a — team loader + schema, mock provider, orchestrator, REST + SSE
 - [ ] Phase 1b — team picker, task input, review queue, report viewer, final output, export
 - [ ] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
 - [ ] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation

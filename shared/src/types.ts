@@ -119,6 +119,8 @@ export interface Task {
   planSummary?: string;
   subtasks: Subtask[];
   final?: FinalOutput;
+  /** Set when the task as a whole failed (e.g. the model was unreachable while planning). */
+  error?: string;
   messages: AgentMessage[];
   createdAt: string;
   updatedAt: string;

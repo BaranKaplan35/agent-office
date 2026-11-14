@@ -17,12 +17,22 @@ const EnvSchema = z
     LLM_PROVIDER: z.enum(LLM_PROVIDERS).default('mock'),
     LLM_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
     LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+    /** Mock answers wait a random time in this range so the office has time to animate. */
+    MOCK_MIN_DELAY_MS: z.coerce.number().int().min(0).default(1500),
+    MOCK_MAX_DELAY_MS: z.coerce.number().int().min(0).default(4000),
     GEMINI_API_KEY: optionalString,
     GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
     ANTHROPIC_API_KEY: optionalString,
     ANTHROPIC_MODEL: z.string().default('claude-haiku-5-5'),
   })
   .superRefine((env, ctx) => {
+    if (env.MOCK_MIN_DELAY_MS > env.MOCK_MAX_DELAY_MS) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MOCK_MIN_DELAY_MS'],
+        message: 'must not be greater than MOCK_MAX_DELAY_MS',
+      });
+    }
     if (env.LLM_PROVIDER === 'gemini' && !env.GEMINI_API_KEY) {
       ctx.addIssue({
         code: 'custom',
