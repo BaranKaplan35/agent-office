@@ -80,6 +80,16 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
   `planParser.ts` — sanitises the coordinator's JSON plan (falls back to `defaultPlan`)
 - `server/src/http/` — `routes.ts` (REST), `sse.ts` (event stream), `errors.ts`
 - `server/src/test/fixtures.ts` — test team, scripted providers, `waitFor` helper
+- `client/src/state/store.ts` — Zustand store: teams, current task, selection, review
+  commands (approve/revise/retry/cancel); remembers team + task id in localStorage
+- `client/src/state/selectors.ts` — pure derivations: `agentActivity` (what each agent is
+  doing — the 3D office must reuse it), review queue, report model, export filename
+- `client/src/api/useTaskStream.ts` — SSE with heartbeat watchdog; drops tasks the server
+  forgot (restart) with a message
+- `client/src/panels/` — review queue, report viewer (versions, approve, revise, export),
+  message log, task input · `client/src/office/TeamBoard.tsx` — flat hub-and-spoke board
+  (WebGL fallback once the 3D office exists)
+- Heavy UI pieces load lazily: `LucideIcon.tsx` (icon map), `MarkdownRenderer.tsx`
 - `client/src/office/` — 3D office (phase 1c):
   `OfficeStage.tsx` (lazy load, WebGL fallback, quality), `scene/` (canvas, camera,
   lighting, `daylight.ts`), `models/` (procedural props), `characters/` (rig, poses,
@@ -113,7 +123,7 @@ the current phase is finished, never mid-phase.
 
 - [x] Phase 0 — skeleton, tooling, shared types, palette, empty layout, i18n, health endpoint
 - [x] Phase 1a — team loader + schema, mock provider, orchestrator, REST + SSE
-- [ ] Phase 1b — team picker, task input, review queue, report viewer, final output, export
+- [x] Phase 1b — team picker, task input, review queue, report viewer, final output, export
 - [ ] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
 - [ ] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
 - [ ] Phase 1c-3 — flying envelopes, Html status bubbles, camera controls + focus, reduced motion, perf

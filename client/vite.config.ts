@@ -17,7 +17,15 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       proxy: {
-        '/api': { target: `http://localhost:${apiPort}`, changeOrigin: true },
+        '/api': {
+          target: `http://localhost:${apiPort}`,
+          changeOrigin: true,
+          // When the API restarts mid-stream, close the browser's connection too,
+          // otherwise an open SSE request would hang forever.
+          configure: (proxy) => {
+            proxy.on('error', (_err, _req, res) => res.destroy());
+          },
+        },
       },
     },
   };

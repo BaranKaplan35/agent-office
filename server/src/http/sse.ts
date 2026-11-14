@@ -2,7 +2,8 @@ import type { TaskEvent } from '@agent-office/shared';
 import type { Request, Response } from 'express';
 import type { Orchestrator } from '../orchestrator/orchestrator';
 
-const HEARTBEAT_MS = 20_000;
+/** Keep in sync with HEARTBEAT_TIMEOUT_MS in client/src/api/useTaskStream.ts (≈3×). */
+const HEARTBEAT_MS = 15_000;
 
 /**
  * Stream a task's events as Server-Sent Events. The first event is always a full
@@ -27,7 +28,8 @@ export function streamTask(
   send({ kind: 'snapshot', task: initial });
 
   const unsubscribe = orchestrator.subscribe(taskId, send);
-  const heartbeat = setInterval(() => res.write(': ping\n\n'), HEARTBEAT_MS);
+  // A real (named) event, not a comment, so the browser can tell a quiet stream from a dead one.
+  const heartbeat = setInterval(() => res.write('event: ping\ndata: {}\n\n'), HEARTBEAT_MS);
 
   req.on('close', () => {
     clearInterval(heartbeat);

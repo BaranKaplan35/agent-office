@@ -1,10 +1,12 @@
 import { useI18n } from '../i18n/context';
+import { useApp, useCurrentTeam } from '../state/store';
+import { TeamBoard } from './TeamBoard';
 
 const TILE_W = 64;
 const TILE_H = 32;
 const GRID = 7;
 
-/** Placeholder floor until the real isometric office arrives (phase 1c). */
+/** Decorative floor shown before a team is chosen. */
 function EmptyFloor() {
   const tiles = [];
   for (let x = 0; x < GRID; x++) {
@@ -34,13 +36,23 @@ function EmptyFloor() {
 
 export function OfficeStage() {
   const { t } = useI18n();
+  const team = useCurrentTeam();
+  const teamsState = useApp((s) => s.teamsState);
+  const noTeams = teamsState === 'ready' && !team;
+
   return (
-    <section className="office card" aria-label={t('office.title')}>
-      <EmptyFloor />
-      <div className="empty-state office-empty">
-        <h2>{t('office.emptyTitle')}</h2>
-        <p>{t('office.emptyBody')}</p>
-      </div>
+    <section className={`office card${team ? ' has-team' : ''}`} aria-label={t('office.title')}>
+      {team ? (
+        <TeamBoard team={team} />
+      ) : (
+        <>
+          <EmptyFloor />
+          <div className="empty-state office-empty">
+            <h2>{noTeams ? t('office.noTeamsTitle') : t('office.emptyTitle')}</h2>
+            <p>{noTeams ? t('office.noTeamsBody') : t('office.emptyBody')}</p>
+          </div>
+        </>
+      )}
     </section>
   );
 }

@@ -19,13 +19,15 @@ UI with the "Daylight Studio" palette (light + dark), EN/TR i18n, server status 
 - Orchestrator state machine + dependency scheduler (unit tested)
 - REST endpoints + SSE (each event carries a full task snapshot)
 
-## Phase 1b — Panels and workflow
+## Phase 1b — Panels and workflow ✅
 
 - Team picker, task input, review queue, report viewer with version switcher,
   approve / revise-with-note, final output, Markdown export, message log
-- Empty / error / cancelled states
+- Empty / error / cancelled states; lost-task detection after a server restart
+  (SSE heartbeat watchdog)
 - Acceptance: a task runs start to finish with no API key
-- The office area keeps the phase-0 placeholder; the 3D office arrives in 1c
+- The office area is a flat hub-and-spoke board (`TeamBoard`); it stays as the
+  WebGL fallback when the 3D office arrives in 1c
 
 ## Phase 1c — 3D office (the showcase)
 

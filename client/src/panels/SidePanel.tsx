@@ -1,35 +1,52 @@
-import { useState } from 'react';
 import { useI18n } from '../i18n/context';
+import { reviewQueue } from '../state/selectors';
+import { useApp, useCurrentTeam, type PanelTab } from '../state/store';
+import { MessageLog } from './MessageLog';
+import { ReportViewer } from './ReportViewer';
+import { ReviewQueue } from './ReviewQueue';
 
-type Tab = 'queue' | 'report';
+const TABS: Array<{ id: PanelTab; label: 'panel.queue' | 'panel.report' | 'panel.log' }> = [
+  { id: 'queue', label: 'panel.queue' },
+  { id: 'report', label: 'panel.report' },
+  { id: 'log', label: 'panel.log' },
+];
 
 export function SidePanel() {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>('queue');
+  const team = useCurrentTeam();
+  const tab = useApp((s) => s.tab);
+  const setTab = useApp((s) => s.setTab);
+  const queueCount = useApp((s) => reviewQueue(s.task, team).length);
 
   return (
     <aside className="side card">
       <div className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'queue'} onClick={() => setTab('queue')}>
-          {t('panel.queue')}
-          <span className="badge">0</span>
-        </button>
-        <button role="tab" aria-selected={tab === 'report'} onClick={() => setTab('report')}>
-          {t('panel.report')}
-        </button>
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            id={`tab-${id}`}
+            role="tab"
+            aria-selected={tab === id}
+            aria-controls="side-panel-body"
+            onClick={() => setTab(id)}
+          >
+            {t(label)}
+            {id === 'queue' && (
+              <span className={`badge${queueCount > 0 ? ' has-items' : ''}`}>{queueCount}</span>
+            )}
+          </button>
+        ))}
       </div>
 
-      <div className="tab-body" role="tabpanel">
-        {tab === 'queue' ? (
-          <div className="empty-state">
-            <h3>{t('panel.queueEmptyTitle')}</h3>
-            <p>{t('panel.queueEmptyBody')}</p>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>{t('panel.reportEmpty')}</p>
-          </div>
-        )}
+      <div
+        id="side-panel-body"
+        className={`tab-body tab-${tab}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${tab}`}
+      >
+        {tab === 'queue' && <ReviewQueue />}
+        {tab === 'report' && <ReportViewer />}
+        {tab === 'log' && <MessageLog />}
       </div>
     </aside>
   );
