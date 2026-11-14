@@ -26,9 +26,16 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 1. **Teams are data, not code.** Every team lives in `teams/*.yaml` and is validated
    by `server/src/teams/schema.ts`. Adding a team must never need a code change. If a
    feature needs per-team behaviour, add an optional schema field.
-2. **All model calls go through `server/src/llm/index.ts`.** Nothing else imports a
-   provider SDK. Provider is chosen by `LLM_PROVIDER` (mock | gemini | anthropic).
-3. **API keys never reach the client.** No secrets in `VITE_*` variables.
+2. **All model calls go through `server/src/llm/`.** `index.ts` is the only place that
+   maps a provider name to an adapter; nothing else imports a provider SDK or calls a
+   provider URL. Providers: `mock | gemini | anthropic | ollama | openrouter` (only
+   `mock` exists until phase 2). Each agent may set `llm: { provider, model }` in its
+   YAML; without it the `.env` default applies (`LLM_PROVIDER` + that provider's default
+   model). Adding a provider = one adapter file + one registry entry — team files and
+   the orchestrator never change. A missing key or unreachable Ollama must be reported
+   at startup naming the team and agent affected, never crash the whole server.
+3. **API keys never reach the client.** No secrets in `VITE_*` variables. Provider and
+   model names are public (shown on desks and reports); keys and base URLs are not.
 4. **Agents never talk directly.** Every message is an `AgentMessage`
    (`shared/src/types.ts`) routed and logged by the orchestrator.
 5. **Approved output is immutable.** Dependent subtasks only receive approved
@@ -114,7 +121,7 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 
 ## Working agreement
 
-Work proceeds phase by phase (phase 1c in three sub-phases). At the end of each phase
+Work proceeds phase by phase (1c in three sub-phases, 2 in two). At the end of each phase
 or sub-phase: stop, summarise simply what was done, and wait for the go-ahead before
 starting the next one. Plan changes are applied to `docs/PLAN.md` and this file once
 the current phase is finished, never mid-phase.
@@ -127,5 +134,7 @@ the current phase is finished, never mid-phase.
 - [ ] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
 - [ ] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
 - [ ] Phase 1c-3 — flying envelopes, Html status bubbles, camera controls + focus, reduced motion, perf
-- [ ] Phase 2 — Gemini + Claude Haiku providers, rate limiting, prompt tuning
+- [ ] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
+- [ ] Phase 2b — model labels on desks/reports, per-report tokens + duration, mixed-team README example
+- [ ] Polish — see the list at the end of `docs/PLAN.md`
 - [ ] Phase 3 — README, CI, third config-only template, optional plan approval, deploy

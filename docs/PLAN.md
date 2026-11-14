@@ -102,13 +102,60 @@ Split into three sub-phases, each ending with a stop and a summary.
 visual checks via screenshots for 3–6 agents, three times of day, both quality
 modes, reduced motion, and phone width.
 
-## Phase 2 — Real models
+## Phase 2 — Real models, multi-provider
 
-- Gemini provider (`@google/genai`), current free-tier model name verified
-- `limiter.ts`: concurrency, 429 backoff, timeouts; errors surfaced in the UI
-- JSON-schema plan output, token usage display
-- Anthropic provider (`@anthropic-ai/sdk`, `claude-haiku-5-5`), switch via `.env`
-- Prompt tuning for both templates on both providers
+Multi-provider support is one of the project's headline features: a single team can
+mix models from different providers ("mixed team"), chosen per agent in YAML.
+Split into two sub-phases, each ending with a stop and a summary.
+
+### 2a — Provider layer and per-agent models
+
+- **Providers:** `mock`, `gemini` (`@google/genai`), `anthropic` (`@anthropic-ai/sdk`),
+  `ollama` (local HTTP API, `OLLAMA_BASE_URL` default `http://localhost:11434`, no key),
+  `openrouter` (OpenAI-compatible HTTP API, `OPENROUTER_API_KEY`). Ollama and
+  OpenRouter use plain `fetch`, no SDK. Current model names verified at
+  implementation time (Gemini free tier, `claude-haiku-5-5`, a small Ollama model)
+- **One adapter file per provider** under `server/src/llm/providers/`, registered in
+  `server/src/llm/index.ts` (still the only place that maps a name to an adapter).
+  `LLMRequest` gains `model`; adapters normalise answers to `{ text, usage }`
+- **Per-agent model in YAML:** optional `llm: { provider, model }` on any agent
+  (coordinator included). Missing → the `.env` default (`LLM_PROVIDER` + that
+  provider's default model, e.g. `GEMINI_MODEL`). Schema validates the provider
+  name; the model is a free string
+  ```yaml
+  - id: code
+    llm: { provider: ollama, model: qwen2.5-coder:7b }
+  ```
+- **Startup preflight** (`server/src/llm/preflight.ts`): resolve every agent of every
+  team, then check that each needed provider has its key and that Ollama answers
+  (`/api/tags`) and has the model pulled. The log names exactly who is affected, e.g.
+  `⚠ maker-lesson-studio › Byte (code) → ollama:qwen2.5-coder:7b — Ollama is not running at http://localhost:11434`.
+  The server still starts; `/api/teams` marks affected teams/agents as unavailable
+  with the reason, and the UI disables sending for that team with a clear message.
+  (Replaces today's hard env check that stops the server when the default key is missing)
+- **Per-provider limits:** separate concurrency limiters (Ollama defaults to 1),
+  429 / 5xx backoff, per-provider timeout (local models get longer,
+  `OLLAMA_TIMEOUT_MS`); errors surface in the UI with the provider name
+- **Structured plan output** per provider: Gemini `responseSchema`, Anthropic tool /
+  JSON instructions, Ollama `format` schema, OpenRouter `response_format` where the
+  model supports it — the existing tolerant `planParser` stays as the safety net
+- **Tests:** adapters against mocked `fetch` / SDK responses (usage mapping per
+  provider), model resolution, preflight messages, schema for the `llm` field
+
+### 2b — Model visibility, metrics and docs
+
+- **Model labels:** `PublicAgent` exposes its resolved `{ provider, model }` (never
+  keys); a small tag on each desk and in the report header, e.g. `ollama · qwen2.5-coder`
+- **Per-report metrics:** each `ReportVersion` records `provider`, `model`,
+  `durationMs` and normalised token usage (Gemini `usageMetadata`, Anthropic
+  `usage`, Ollama `prompt_eval_count/eval_count`, OpenRouter `usage`); the report
+  footer shows e.g. `gemini · gemini-2.5-flash · 1.2k in / 850 out · 4.3 s`, and
+  "—" when a provider gives no counts
+- **Task totals:** tokens and time per provider for the whole task (final view)
+- **README:** a "mixed team" example YAML (e.g. coordinator on Claude Haiku, coder on
+  a local Ollama model, the rest on Gemini, marketing via OpenRouter) plus a
+  provider table: required env vars, free/local options, what data goes where
+- Prompt tuning for both templates across providers
 
 ## Phase 3 — GitHub and portfolio
 
@@ -118,3 +165,12 @@ modes, reduced motion, and phone width.
 - A third team template, added as YAML only
 - Optional plan-approval step (approve the coordinator's subtask list before work starts)
 - Optional: JSON-file persistence, deploy (Render / Fly.io)
+
+## Polish (left for the end)
+
+Small improvements collected along the way; done after the main phases unless one
+becomes blocking.
+
+- [ ] When a task is completed, the "All done" screen in the right panel offers
+      "View final" and "Download .md" buttons directly (today you have to open the
+      coordinator's desk first)
