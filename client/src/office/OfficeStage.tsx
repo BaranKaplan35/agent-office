@@ -1,9 +1,12 @@
 import type { PublicTeam } from '@agent-office/shared';
-import { lazy, Suspense, useMemo } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/context';
 import type { AgentActivity } from '../state/selectors';
 import { useApp, useCurrentTeam } from '../state/store';
+import { useReducedMotion } from './motion';
 import { OfficeErrorBoundary } from './OfficeErrorBoundary';
+import type { CameraHandle } from './scene/CameraRig';
 import type { OfficeSceneProps } from './scene/OfficeScene';
 import { TaskHeader } from './TaskHeader';
 import { TeamBoard } from './TeamBoard';
@@ -54,11 +57,33 @@ function FlatOffice({ team, notice }: { team: PublicTeam; notice: string }) {
   );
 }
 
+/** Esc shouldn't steal a keystroke meant for a text field or an open menu. */
+function isTyping(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  );
+}
+
 function Office3D({ team }: { team: PublicTeam }) {
   const { t, lang } = useI18n();
   const task = useApp((s) => s.task);
   const selection = useApp((s) => s.selection);
   const select = useApp((s) => s.select);
+  const reduced = useReducedMotion();
+  const camera = useRef<CameraHandle>(null);
+  const [viewMoved, setViewMoved] = useState(false);
+
+  // Esc returns the camera to the overview.
+  useEffect(() => {
+    if (!viewMoved) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || isTyping(e.target)) return;
+      camera.current?.reset();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [viewMoved]);
 
   const texts = useMemo<OfficeSceneProps['texts']>(
     () => ({
@@ -78,12 +103,28 @@ function Office3D({ team }: { team: PublicTeam }) {
           lang={lang}
           selection={selection}
           onSelect={select}
+          reduced={reduced}
+          cameraRef={camera}
+          onViewMoved={setViewMoved}
           texts={texts}
         />
       </Suspense>
 
       <div className="office-overlay">
         {task ? <TaskHeader /> : <p className="office-hint">{t('office.idleHint')}</p>}
+        {viewMoved && (
+          <div>
+            <button
+              type="button"
+              className="office-view-reset"
+              onClick={() => camera.current?.reset()}
+            >
+              <RotateCcw size={14} aria-hidden="true" />
+              {t('office.resetView')}
+              <kbd aria-hidden="true">Esc</kbd>
+            </button>
+          </div>
+        )}
       </div>
       {task?.planSummary && (
         <p className="plan-bubble office-plan">

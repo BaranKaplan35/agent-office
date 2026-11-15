@@ -87,3 +87,75 @@ export function fitCamera({ corners, direction, viewport, margin = 0.06 }: FitIn
   ];
   return { zoom, target };
 }
+
+// --------------------------------------------------------------- user orbit
+
+/** How far the viewer may turn and zoom the camera, relative to the default iso view. */
+export const ORBIT = {
+  azimuthRangeDeg: 35,
+  polarMinDeg: 40,
+  polarMaxDeg: 65,
+  /** Zoom limits as multiples of the zoom that fits the whole room. */
+  zoomMin: 0.7,
+  zoomMax: 2.5,
+  /** Zoom used when focusing a desk (at least; never zooms out). */
+  focusZoom: 1.9,
+} as const;
+
+export interface OrbitLimits {
+  minAzimuth: number;
+  maxAzimuth: number;
+  minPolar: number;
+  maxPolar: number;
+  minZoom: number;
+  maxZoom: number;
+}
+
+/** Limits in radians and absolute zoom, for a room that fits at `fitZoom`. */
+export function orbitLimits(fitZoom: number): OrbitLimits {
+  return {
+    minAzimuth: rad(ISO.azimuthDeg - ORBIT.azimuthRangeDeg),
+    maxAzimuth: rad(ISO.azimuthDeg + ORBIT.azimuthRangeDeg),
+    minPolar: rad(ORBIT.polarMinDeg),
+    maxPolar: rad(ORBIT.polarMaxDeg),
+    minZoom: fitZoom * ORBIT.zoomMin,
+    maxZoom: fitZoom * ORBIT.zoomMax,
+  };
+}
+
+/** Zoom for looking at one desk: closer than the overview, never further out than now. */
+export function focusZoom(fitZoom: number, currentZoom: number): number {
+  return Math.min(Math.max(currentZoom, fitZoom * ORBIT.focusZoom), fitZoom * ORBIT.zoomMax);
+}
+
+/** Height of the point the camera looks at when focusing a desk. */
+export const FOCUS_HEIGHT = 0.9;
+
+export interface ViewState {
+  /** Radians; may be accumulated beyond ±π by the controls. */
+  azimuth: number;
+  polar: number;
+  zoom: number;
+  target: Vec3;
+}
+
+const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+
+/** True when the view is (practically) the default overview for this fit. */
+export function isOverview(view: ViewState, fit: FitResult): boolean {
+  const d = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  return (
+    Math.abs(wrapAngle(view.azimuth - rad(ISO.azimuthDeg))) < 0.01 &&
+    Math.abs(view.polar - rad(ISO.polarDeg)) < 0.01 &&
+    Math.abs(view.zoom / fit.zoom - 1) < 0.01 &&
+    // the target may slide along the viewing direction without changing the picture
+    d(projectOnPlane(view.target), projectOnPlane(fit.target)) < 0.05
+  );
+}
+
+/** Remove the component along the default viewing direction (an ortho view ignores it). */
+function projectOnPlane(p: Vec3): Vec3 {
+  const n = isoDirection();
+  const k = dot(p, n);
+  return [p[0] - n[0] * k, p[1] - n[1] * k, p[2] - n[2] * k];
+}

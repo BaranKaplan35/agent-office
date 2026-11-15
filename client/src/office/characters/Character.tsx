@@ -2,6 +2,7 @@ import { useCursor } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import type { Group, Mesh } from 'three';
+import { StaticBatch } from '../models/StaticBatch';
 import { mixHex } from '../scene/daylight';
 import type { Appearance } from './appearance';
 import type { CharacterBrain } from './brain';
@@ -262,8 +263,10 @@ export function Character({ brain, look, ctx, onOpen, accent }: Props) {
 
   const handlers = onOpen
     ? {
-        onClick: (e: { stopPropagation: () => void }) => {
+        onClick: (e: { stopPropagation: () => void; delta: number }) => {
           e.stopPropagation();
+          // a drag that turned the camera is not a click
+          if (e.delta > 6) return;
           onOpen();
         },
         onPointerOver: (e: { stopPropagation: () => void }) => {
@@ -275,60 +278,83 @@ export function Character({ brain, look, ctx, onOpen, accent }: Props) {
     : {};
 
   const R = DIM.headR;
+  // The head and torso are rigid: each is merged into a few meshes. A string,
+  // so a re-render with the same looks doesn't trigger a re-merge.
+  const batchVersion = JSON.stringify([look, accent]);
+  const DYNAMIC = { dynamic: true };
   return (
     <group ref={set('root')} {...handlers}>
       <group ref={set('body')} position={[0, DIM.hipY, 0]}>
         {/* torso and hips */}
-        <mesh position={[0, 0.03, 0]} castShadow>
-          <boxGeometry args={[0.3, 0.14, 0.22]} />
-          <meshStandardMaterial color={look.pants} roughness={0.8} />
-        </mesh>
-        <mesh position={[0, 0.2, 0]} castShadow>
-          <capsuleGeometry args={[0.17, 0.12, 4, 10]} />
-          <meshStandardMaterial color={look.outfit} roughness={0.75} />
-        </mesh>
-        <mesh position={[0, 0.37, 0]} castShadow>
-          <cylinderGeometry args={[0.05, 0.06, 0.08, 8]} />
-          <meshStandardMaterial color={look.skin} roughness={0.8} />
-        </mesh>
+        <StaticBatch version={batchVersion}>
+          <mesh position={[0, 0.03, 0]} castShadow>
+            <boxGeometry args={[0.3, 0.14, 0.22]} />
+            <meshStandardMaterial color={look.pants} roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.2, 0]} castShadow>
+            <capsuleGeometry args={[0.17, 0.12, 4, 10]} />
+            <meshStandardMaterial color={look.outfit} roughness={0.75} />
+          </mesh>
+          <mesh position={[0, 0.37, 0]} castShadow>
+            <cylinderGeometry args={[0.05, 0.06, 0.08, 8]} />
+            <meshStandardMaterial color={look.skin} roughness={0.8} />
+          </mesh>
+        </StaticBatch>
 
         {/* head */}
         <group ref={set('head')} position={[0, DIM.headY, 0]}>
-          <mesh castShadow>
-            <icosahedronGeometry args={[R, 2]} />
-            <meshStandardMaterial color={look.skin} roughness={0.7} />
-          </mesh>
-          {[-1, 1].map((s) => (
-            <mesh key={s} position={[s * (R - 0.01), -0.01, 0]} castShadow>
-              <icosahedronGeometry args={[0.05, 1]} />
-              <meshStandardMaterial color={look.skin} roughness={0.8} flatShading />
+          <StaticBatch version={batchVersion}>
+            <mesh castShadow>
+              <icosahedronGeometry args={[R, 2]} />
+              <meshStandardMaterial color={look.skin} roughness={0.7} />
             </mesh>
-          ))}
-          {/* face */}
-          <mesh ref={set('eyeL')} position={[0.105, 0.04, 0.262]}>
-            <icosahedronGeometry args={[0.042, 1]} />
-            <meshStandardMaterial color={INK} roughness={0.3} />
-          </mesh>
-          <mesh ref={set('eyeR')} position={[-0.105, 0.04, 0.262]}>
-            <icosahedronGeometry args={[0.042, 1]} />
-            <meshStandardMaterial color={INK} roughness={0.3} />
-          </mesh>
-          {[-1, 1].map((s) => (
-            <mesh key={s} position={[s * 0.175, -0.05, 0.225]} rotation={[0, s * 0.7, 0]}>
-              <circleGeometry args={[0.048, 12]} />
-              <meshBasicMaterial color={look.cheek} transparent opacity={0.65} toneMapped={false} />
+            {[-1, 1].map((s) => (
+              <mesh key={s} position={[s * (R - 0.01), -0.01, 0]} castShadow>
+                <icosahedronGeometry args={[0.05, 1]} />
+                <meshStandardMaterial color={look.skin} roughness={0.8} flatShading />
+              </mesh>
+            ))}
+            {/* face */}
+            <mesh ref={set('eyeL')} userData={DYNAMIC} position={[0.105, 0.04, 0.262]}>
+              <icosahedronGeometry args={[0.042, 1]} />
+              <meshStandardMaterial color={INK} roughness={0.3} />
             </mesh>
-          ))}
-          <mesh ref={set('smile')} position={[0, -0.075, 0.272]} rotation={[0, 0, Math.PI]}>
-            <torusGeometry args={[0.05, 0.011, 6, 12, Math.PI]} />
-            <meshStandardMaterial color={MOUTH} side={2} />
-          </mesh>
-          <mesh ref={set('openMouth')} position={[0, -0.115, 0.262]} visible={false}>
-            <icosahedronGeometry args={[0.04, 1]} />
-            <meshStandardMaterial color={MOUTH} />
-          </mesh>
-          <Hair style={look.hairStyle} color={look.hair} />
-          <Accessory kind={look.accessory} color={accent} />
+            <mesh ref={set('eyeR')} userData={DYNAMIC} position={[-0.105, 0.04, 0.262]}>
+              <icosahedronGeometry args={[0.042, 1]} />
+              <meshStandardMaterial color={INK} roughness={0.3} />
+            </mesh>
+            {[-1, 1].map((s) => (
+              <mesh key={s} position={[s * 0.175, -0.05, 0.225]} rotation={[0, s * 0.7, 0]}>
+                <circleGeometry args={[0.048, 12]} />
+                <meshBasicMaterial
+                  color={look.cheek}
+                  transparent
+                  opacity={0.65}
+                  toneMapped={false}
+                />
+              </mesh>
+            ))}
+            <mesh
+              ref={set('smile')}
+              userData={DYNAMIC}
+              position={[0, -0.075, 0.272]}
+              rotation={[0, 0, Math.PI]}
+            >
+              <torusGeometry args={[0.05, 0.011, 6, 12, Math.PI]} />
+              <meshStandardMaterial color={MOUTH} side={2} />
+            </mesh>
+            <mesh
+              ref={set('openMouth')}
+              userData={DYNAMIC}
+              position={[0, -0.115, 0.262]}
+              visible={false}
+            >
+              <icosahedronGeometry args={[0.04, 1]} />
+              <meshStandardMaterial color={MOUTH} />
+            </mesh>
+            <Hair style={look.hairStyle} color={look.hair} />
+            <Accessory kind={look.accessory} color={accent} />
+          </StaticBatch>
         </group>
 
         {/* arms */}

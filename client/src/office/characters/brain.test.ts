@@ -271,8 +271,44 @@ describe('turnToward', () => {
   it('turns the short way round and never overshoots', () => {
     expect(turnToward(0, 1, 0.3)).toBeCloseTo(0.3, 10);
     expect(turnToward(0, 0.2, 0.3)).toBeCloseTo(0.2, 10);
-    // from just below Ãâ‚¬ to just above -Ãâ‚¬ is a tiny turn, not a full circle
+    // from just below π to just above -π is a tiny turn, not a full circle
     expect(turnToward(3.0, -3.0, 0.5)).toBeCloseTo(3.0 + 0.283, 2);
     expect(turnToward(0, -2, 0.5)).toBeCloseTo(-0.5, 10);
+  });
+});
+
+describe('CharacterBrain: settle (reduced motion)', () => {
+  it('jumps from wandering straight into the chair', () => {
+    const { brain, seat } = brainFor('a', free);
+    brain.setGoal(goalFor('working'));
+    expect(brain.isSettled()).toBe(false);
+    brain.settle();
+    const s = brain.snapshot();
+    expect(s.phase).toBe('seated');
+    expect([s.x, s.z]).toEqual([seat.x, seat.z]);
+    expect(s.action).toBe('typing');
+    expect(brain.isSettled()).toBe(true);
+  });
+
+  it('jumps from mid-walk to the celebration spot and releases its idle spot', () => {
+    const shared = world();
+    const { brain } = brainFor('a', desk, shared);
+    brain.setGoal(free);
+    run(brain, 1.2, (s) => s.walking);
+    const spotId = brain.snapshot().spotId;
+    expect(spotId).not.toBeNull();
+    brain.setGoal(cheer);
+    brain.settle();
+    const s = brain.snapshot();
+    expect(s.phase).toBe('celebrating');
+    expect([s.x, s.z]).toEqual([celebrate.get('a')!.x, celebrate.get('a')!.z]);
+    expect(shared.spots.ownerOf(spotId as string)).toBeUndefined();
+  });
+
+  it('does nothing when already settled', () => {
+    const { brain } = brainFor('a', desk);
+    const before = brain.snapshot();
+    brain.settle();
+    expect(brain.snapshot()).toEqual(before);
   });
 });

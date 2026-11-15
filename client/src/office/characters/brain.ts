@@ -3,9 +3,12 @@
  * a goal ("sit and type", "wander", "celebrate") into movement and an action.
  * The renderer calls `update(dt)` every frame and draws the returned snapshot.
  *
- *   seated Ã¢â€â‚¬Ã¢â€â‚¬goal changesÃ¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Â¶ rising Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Â¶ walking Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Â¶ acting (coffee, window Ã¢â‚¬Â¦)
- *      Ã¢â€“Â²                                   Ã¢â€â€š  Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Â¶ celebrating
- *      Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ sitting Ã¢â€”â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
+ *   seated ──goal changes──▶ rising ──▶ walking ──▶ acting (coffee, window …)
+ *      ▲                                   │  └────▶ celebrating
+ *      └────── sitting ◀──────────────────┘
+ *
+ * Under reduced motion the renderer calls `settle()` instead, which puts the
+ * character straight into the end state of its goal (no walking).
  */
 import { findPath, type Grid, type Vec2 } from '../navigation/grid';
 import type { CelebrateSpot, IdleSpot, Seat, SpotAction } from '../navigation/office';
@@ -20,7 +23,7 @@ export interface CharacterSnapshot {
   z: number;
   /** Rotation around Y (the character faces local +Z). */
   heading: number;
-  /** 0 standing Ã¢â‚¬Â¦ 1 seated (blends the poses while sitting down or getting up). */
+  /** 0 standing … 1 seated (blends the poses while sitting down or getting up). */
   sitBlend: number;
   walking: boolean;
   /** Advances with distance walked; drives the leg and arm swing. */
@@ -68,19 +71,19 @@ export function turnToward(from: number, to: number, maxStep: number): number {
 }
 
 export class CharacterBrain {
-  private phase: Phase;
+  private phase!: Phase;
   private phaseTime = 0;
   private goal: Goal;
   private goalAge = 0;
 
-  private x: number;
-  private z: number;
-  private heading: number;
-  private targetHeading: number;
-  private sitBlend: number;
+  private x!: number;
+  private z!: number;
+  private heading!: number;
+  private targetHeading!: number;
+  private sitBlend!: number;
   private walkPhase = 0;
 
-  private action: ActionName;
+  private action!: ActionName;
   private seatAction: DeskPose = 'typing';
   private actionTime = 0;
 
@@ -98,43 +101,7 @@ export class CharacterBrain {
   ) {
     this.speed = cfg.speed ?? 1.5;
     this.goal = initialGoal;
-    const { seat } = cfg;
-
-    if (initialGoal.kind === 'desk') {
-      this.phase = 'seated';
-      this.x = seat.x;
-      this.z = seat.z;
-      this.heading = this.targetHeading = seat.heading;
-      this.sitBlend = 1;
-      this.seatAction = initialGoal.pose;
-      this.action = initialGoal.pose;
-    } else if (initialGoal.kind === 'celebrate') {
-      this.phase = 'celebrating';
-      this.x = cfg.celebrate.x;
-      this.z = cfg.celebrate.z;
-      this.heading = this.targetHeading = cfg.celebrate.heading;
-      this.sitBlend = 0;
-      this.action = 'celebrate';
-    } else {
-      const spot = cfg.spots.claim(cfg.id, cfg.rand);
-      this.phase = 'acting';
-      this.sitBlend = 0;
-      if (spot) {
-        this.spot = spot;
-        this.lastSpotId = spot.id;
-        this.x = spot.x;
-        this.z = spot.z;
-        this.heading = this.targetHeading = spot.heading;
-        this.action = spot.action;
-        this.remaining = spot.duration * (0.3 + 0.7 * cfg.rand());
-      } else {
-        this.x = seat.approach.x;
-        this.z = seat.approach.z;
-        this.heading = this.targetHeading = seat.heading;
-        this.action = 'stand';
-        this.remaining = 3;
-      }
-    }
+    this.place(initialGoal);
   }
 
   /** Set what the character should be doing. Calling it again with the same goal does nothing. */
@@ -142,6 +109,21 @@ export class CharacterBrain {
     if (sameGoal(goal, this.goal)) return;
     this.goal = goal;
     this.goalAge = 0;
+  }
+
+  /** True when the character has reached the end state of its goal (nothing left to walk). */
+  isSettled(): boolean {
+    const want = this.effectiveGoal();
+    if (want.kind === 'desk') return this.phase === 'seated';
+    if (want.kind === 'celebrate') return this.phase === 'celebrating';
+    return this.phase === 'acting';
+  }
+
+  /** Jump straight to the end state of the current goal (reduced motion). */
+  settle(): void {
+    if (this.isSettled()) return;
+    this.leaveSpot();
+    this.place(this.effectiveGoal());
   }
 
   update(rawDt: number): CharacterSnapshot {
@@ -197,6 +179,56 @@ export class CharacterBrain {
   }
 
   // ----------------------------------------------------------------- phases
+
+  /** Put the character directly into the resting state for a goal. */
+  private place(goal: Goal): void {
+    const { cfg } = this;
+    const { seat } = cfg;
+    this.path = [];
+    this.dest = null;
+    this.phaseTime = 0;
+    this.actionTime = 0;
+
+    if (goal.kind === 'desk') {
+      this.phase = 'seated';
+      this.x = seat.x;
+      this.z = seat.z;
+      this.heading = this.targetHeading = seat.heading;
+      this.sitBlend = 1;
+      this.seatAction = goal.pose;
+      this.action = goal.pose;
+      return;
+    }
+    if (goal.kind === 'celebrate') {
+      this.phase = 'celebrating';
+      this.x = cfg.celebrate.x;
+      this.z = cfg.celebrate.z;
+      this.heading = this.targetHeading = cfg.celebrate.heading;
+      this.sitBlend = 0;
+      this.action = 'celebrate';
+      return;
+    }
+
+    const spot = cfg.spots.claim(cfg.id, cfg.rand, this.lastSpotId);
+    this.phase = 'acting';
+    this.sitBlend = 0;
+    if (spot) {
+      this.spot = spot;
+      this.lastSpotId = spot.id;
+      this.x = spot.x;
+      this.z = spot.z;
+      this.heading = this.targetHeading = spot.heading;
+      this.action = spot.action;
+      this.remaining = spot.duration * (0.3 + 0.7 * cfg.rand());
+    } else {
+      this.spot = null;
+      this.x = seat.approach.x;
+      this.z = seat.approach.z;
+      this.heading = this.targetHeading = seat.heading;
+      this.action = 'stand';
+      this.remaining = 3;
+    }
+  }
 
   /** A "desk then free" goal turns into plain "free" once its time is up. */
   private effectiveGoal(): Goal {

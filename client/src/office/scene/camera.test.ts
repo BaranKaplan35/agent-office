@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { roomCorners } from '../layout';
-import { cameraBasis, fitCamera, ISO, isoDirection, type Vec3 } from './camera';
+import {
+  cameraBasis,
+  fitCamera,
+  focusZoom,
+  ISO,
+  isOverview,
+  isoDirection,
+  orbitLimits,
+  type Vec3,
+} from './camera';
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
@@ -68,5 +77,65 @@ describe('fitCamera', () => {
     expect(small.zoom).toBeCloseTo(big.zoom / 2, 5);
     const none = fitCamera({ corners, direction, viewport: { width: 0, height: 0 } });
     expect(none.zoom).toBe(1);
+  });
+});
+
+describe('orbit limits', () => {
+  it('allow ±35° around the iso azimuth, 40–65° polar and 0.7–2.5× zoom', () => {
+    const l = orbitLimits(40);
+    expect((l.minAzimuth * 180) / Math.PI).toBeCloseTo(10, 6);
+    expect((l.maxAzimuth * 180) / Math.PI).toBeCloseTo(80, 6);
+    expect((l.minPolar * 180) / Math.PI).toBeCloseTo(40, 6);
+    expect((l.maxPolar * 180) / Math.PI).toBeCloseTo(65, 6);
+    expect(l.minZoom).toBeCloseTo(28, 6);
+    expect(l.maxZoom).toBeCloseTo(100, 6);
+  });
+
+  it('keep the default view inside the limits', () => {
+    const l = orbitLimits(1);
+    const az = (ISO.azimuthDeg * Math.PI) / 180;
+    const polar = (ISO.polarDeg * Math.PI) / 180;
+    expect(az).toBeGreaterThan(l.minAzimuth);
+    expect(az).toBeLessThan(l.maxAzimuth);
+    expect(polar).toBeGreaterThan(l.minPolar);
+    expect(polar).toBeLessThan(l.maxPolar);
+  });
+
+  it('focus zooms in, never out, and stays within the maximum', () => {
+    expect(focusZoom(40, 40)).toBeCloseTo(76, 6);
+    expect(focusZoom(40, 90)).toBe(90);
+    expect(focusZoom(40, 500)).toBe(100);
+  });
+});
+
+describe('isOverview', () => {
+  const fit = { zoom: 40, target: [1, 0.5, -1] as Vec3 };
+  const base = {
+    azimuth: (ISO.azimuthDeg * Math.PI) / 180,
+    polar: (ISO.polarDeg * Math.PI) / 180,
+    zoom: 40,
+    target: fit.target,
+  };
+
+  it('recognises the default view, also after full turns', () => {
+    expect(isOverview(base, fit)).toBe(true);
+    expect(isOverview({ ...base, azimuth: base.azimuth + 2 * Math.PI }, fit)).toBe(true);
+  });
+
+  it('ignores sliding the target along the view direction', () => {
+    const d = isoDirection();
+    const target: Vec3 = [
+      fit.target[0] + d[0] * 3,
+      fit.target[1] + d[1] * 3,
+      fit.target[2] + d[2] * 3,
+    ];
+    expect(isOverview({ ...base, target }, fit)).toBe(true);
+  });
+
+  it('notices turning, tilting, zooming and focusing', () => {
+    expect(isOverview({ ...base, azimuth: base.azimuth + 0.2 }, fit)).toBe(false);
+    expect(isOverview({ ...base, polar: base.polar - 0.1 }, fit)).toBe(false);
+    expect(isOverview({ ...base, zoom: 60 }, fit)).toBe(false);
+    expect(isOverview({ ...base, target: [3, 0.9, 2] }, fit)).toBe(false);
   });
 });

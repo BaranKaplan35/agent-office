@@ -195,7 +195,7 @@ interface InstancedBoxesProps {
   roughness?: number;
 }
 
-/** Many unit boxes drawn in a single call (floor planks, books â€¦). */
+/** Many unit boxes drawn in a single call (floor planks, books …). */
 export function InstancedBoxes({
   items,
   castShadow = true,

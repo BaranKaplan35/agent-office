@@ -127,7 +127,46 @@ Done as planned, with these decisions made along the way:
 - Walking: arm/leg swing, body bob; grid navigation with A* around desks
   (`navigation/`, unit tested)
 
-### 1c-3 — Interaction and effects
+### 1c-3 — Interaction and effects ✅
+
+Done as planned, with these decisions made along the way:
+
+- **Envelopes** (`effects/flights.ts`, pure and tested): a `MessageWatcher` turns new
+  `assignment` messages into flights on a `FlightBoard`; the task already open when the
+  office loads counts as history, so a reload never replays old envelopes. Flights from
+  one snapshot are staggered. The worker is _held_ (keeps its previous goal) until its
+  envelope lands, then hurries to the desk. Rendering is a fixed pool of 6 envelopes
+  (paper + flap and seal in the agent colour, an additive glow sprite painted once in
+  code, a landing ring); 1.45 s flight + 0.35 s landing
+- **Status bubbles:** the desk tag became a speech bubble with a tail in the agent colour:
+  badge + name, opening to role + status on hover / focus / selection. Badges per
+  activity (bouncing dots while busy, ✎ revising, ! review with a pulse, ✓ approved,
+  ✕ failed, hourglass waiting, coffee idle, party when done); the badge pops whenever
+  the activity changes. On a wide canvas (container query, ≥ 820 px) bubbles that
+  need the user (review, failed) stay open
+- **Camera:** drei `CameraControls` with the planned limits (pure `orbitLimits`,
+  `focusZoom`, `isOverview`, tested). Left drag / one finger turns, wheel / pinch zooms,
+  no panning; rotate speed halved for the small diorama. A drag is not a click (desks
+  and characters ignore pointer-ups after > 6 px). Opening a desk from the scene (desk,
+  character or bubble) glides there; opening from the panel does not move the camera.
+  "Reset view" (with an Esc hint) appears only when the view left the overview; a new
+  canvas (quality change) or another team starts from the overview again
+- **Reduced motion** (`motion.ts`; `?motion=reduce|full` overrides for screenshots):
+  `calmGoalFor` keeps everyone at their desk (no wandering, no "approved → wander"),
+  `brain.settle()` jumps straight to the end state, poses hold one frame (no blinking),
+  monitor text stands still, envelopes fade in at the desk, camera moves are instant,
+  no confetti; CSS animations were already off
+- **Performance:** static batching (`models/batch.ts` + `StaticBatch`): meshes that never
+  move are merged into one mesh per distinct material; anything that changes on its own
+  is marked `userData.dynamic`. Originals are hidden, not removed, so React still owns
+  them and clicks still reach them. Applied to the room and furniture, each desk (the
+  monitor screen stays dynamic) and each character's head and torso. Monitor text lines
+  are one instanced mesh per screen. Draw calls for a 5-agent office went from 522 to
+  259 (shadow casters 402 → 181). `?perf` publishes fps and renderer counts on
+  `window.__officePerf` for checking
+- Not done: the stretch wall task board
+
+- Original plan for this sub-phase:
 
 - **Envelope:** on each `assignment` message a glowing envelope flies from the hub
   desk to the worker's desk on a curved path (quadratic Bézier with an arc),

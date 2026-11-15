@@ -1,11 +1,13 @@
 import type { PublicAgent } from '@agent-office/shared';
-import { useLayoutEffect, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { AgentActivity } from '../../state/selectors';
-import { goalFor } from '../characters/activities';
+import { calmGoalFor, goalFor } from '../characters/activities';
 import { appearanceFor, hashString } from '../characters/appearance';
 import { CharacterBrain } from '../characters/brain';
 import { Character } from '../characters/Character';
 import { Confetti } from '../characters/Confetti';
+import type { FlightBoard } from '../effects/flights';
 import { SpotRegistry } from '../characters/spotRegistry';
 import { HUB_POSITION, type DeskSlot, type OfficeLayout } from '../layout';
 import { buildOfficeGrid, celebrateSpots, idleSpots, seatFor } from '../navigation/office';
@@ -29,10 +31,14 @@ interface Props {
   celebrating: boolean;
   /** Changes when the team does, so the characters start afresh. */
   teamKey: string;
+  /** Envelopes on their way: a worker only heads for the desk once its envelope lands. */
+  board: FlightBoard;
+  /** Reduced motion: no wandering, still poses, no confetti, instant moves. */
+  reduced: boolean;
 }
 
 /** All the characters of the team, plus the confetti. */
-export function Cast({ layout, entries, palette, celebrating, teamKey }: Props) {
+export function Cast({ layout, entries, palette, celebrating, teamKey, board, reduced }: Props) {
   const grid = useMemo(() => buildOfficeGrid(layout), [layout]);
   const celebrate = useMemo(() => celebrateSpots(layout), [layout]);
 
@@ -56,7 +62,7 @@ export function Cast({ layout, entries, palette, celebrating, teamKey }: Props) 
             celebrate: celebrate.get(slot.agentId) as NonNullable<ReturnType<typeof celebrate.get>>,
             rand,
           },
-          goalFor(entry?.activity ?? 'idle'),
+          (reduced ? calmGoalFor : goalFor)(entry?.activity ?? 'idle'),
         ),
       );
     }
@@ -66,8 +72,20 @@ export function Cast({ layout, entries, palette, celebrating, teamKey }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, grid, celebrate, teamKey]);
 
+  // Goals are applied every frame, because an envelope landing (not a React
+  // render) is what releases a worker to go to the desk.
+  const latest = useRef(entries);
   useLayoutEffect(() => {
-    for (const entry of entries) brains.get(entry.agent.id)?.setGoal(goalFor(entry.activity));
+    latest.current = entries;
+  });
+  useFrame(() => {
+    const now = performance.now() / 1000;
+    for (const entry of latest.current) {
+      const brain = brains.get(entry.agent.id);
+      if (!brain || board.holding(entry.agent.id, now, reduced)) continue;
+      brain.setGoal(reduced ? calmGoalFor(entry.activity) : goalFor(entry.activity));
+      if (reduced) brain.settle();
+    }
   });
 
   const confettiColors = useMemo(
@@ -96,6 +114,7 @@ export function Cast({ layout, entries, palette, celebrating, teamKey }: Props) 
               lookYaw: -slot.monitorSide * 0.45,
               seed: (hashString(agent.id) % 628) / 100,
               hub: slot.type === 'coordinator',
+              still: reduced,
             }}
             accent={agent.deskColor}
             onOpen={open}
@@ -103,7 +122,7 @@ export function Cast({ layout, entries, palette, celebrating, teamKey }: Props) 
         );
       })}
       <Confetti
-        active={celebrating}
+        active={celebrating && !reduced}
         x={HUB_POSITION.x}
         z={HUB_POSITION.z}
         colors={confettiColors}

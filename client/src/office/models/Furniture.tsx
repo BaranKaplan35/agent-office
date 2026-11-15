@@ -20,6 +20,7 @@ export function Monitor({
   position,
   yaw = 0,
   seed = 1,
+  still = false,
 }: {
   palette: ScenePalette;
   tone: ActivityTone;
@@ -27,6 +28,7 @@ export function Monitor({
   yaw?: number;
   /** Varies the line pattern between monitors. */
   seed?: number;
+  still?: boolean;
 }) {
   const screen = toneColors(palette, tone);
   const lit = tone !== 'muted';
@@ -35,24 +37,27 @@ export function Monitor({
       <Cyl radius={0.13} height={0.02} position={[0, 0.01, 0]} color={GRAPHITE} segments={20} />
       <Box color={GRAPHITE} size={[0.05, 0.24, 0.04]} position={[0, 0.14, 0]} />
       <Box color={GRAPHITE} size={[0.86, 0.52, 0.045]} radius={0.02} position={[0, 0.5, 0]} />
-      <mesh position={[0, 0.5, 0.0235]}>
-        <planeGeometry args={[0.78, 0.44]} />
-        <meshStandardMaterial
-          color="#0f1418"
+      {/* The screen follows the agent's status, so it is never merged into the desk. */}
+      <group userData={{ dynamic: true }}>
+        <mesh position={[0, 0.5, 0.0235]}>
+          <planeGeometry args={[0.78, 0.44]} />
+          <meshStandardMaterial
+            color="#0f1418"
+            emissive={screen.color}
+            emissiveIntensity={screen.intensity * (lit ? 0.55 : 1)}
+          />
+        </mesh>
+        {lit && <ScreenLines animate={tone === 'working' && !still} seed={seed} />}
+        {/* a status light on the back, so the state is visible from behind too */}
+        <Box
+          color={screen.color}
           emissive={screen.color}
-          emissiveIntensity={screen.intensity * (lit ? 0.55 : 1)}
+          emissiveIntensity={screen.intensity * 1.4}
+          size={[0.07, 0.07, 0.012]}
+          position={[0.32, 0.7, -0.028]}
+          castShadow={false}
         />
-      </mesh>
-      {lit && <ScreenLines animate={tone === 'working'} seed={seed} />}
-      {/* a status light on the back, so the state is visible from behind too */}
-      <Box
-        color={screen.color}
-        emissive={screen.color}
-        emissiveIntensity={screen.intensity * 1.4}
-        size={[0.07, 0.07, 0.012]}
-        position={[0.32, 0.7, -0.028]}
-        castShadow={false}
-      />
+      </group>
     </group>
   );
 }
@@ -86,10 +91,20 @@ export interface StationProps {
   withPlant?: boolean;
   /** Varies the monitor text pattern. */
   seed?: number;
+  /** Reduced motion: monitor text stands still. */
+  still?: boolean;
 }
 
 /** A worker's desk with its monitor, props and chair (local +Z = chair side). */
-export function Desk({ palette, agentColor, tone, monitorSide, withPlant, seed }: StationProps) {
+export function Desk({
+  palette,
+  agentColor,
+  tone,
+  monitorSide,
+  withPlant,
+  seed,
+  still,
+}: StationProps) {
   const drawer = mixHex(palette.wood, agentColor, 0.45);
   return (
     <group>
@@ -152,6 +167,7 @@ export function Desk({ palette, agentColor, tone, monitorSide, withPlant, seed }
         position={[monitorSide * 0.62, 0.78, -0.22]}
         yaw={-monitorSide * MONITOR_YAW}
         seed={seed}
+        still={still}
       />
       {withPlant && <SmallPlant palette={palette} position={[-0.8, 0.78, -0.3]} />}
       <Chair palette={palette} color={agentColor} />
@@ -162,7 +178,13 @@ export function Desk({ palette, agentColor, tone, monitorSide, withPlant, seed }
 // ---------------------------------------------------------------- hub desk
 
 /** The coordinator's round hub desk (local +Z = chair side). */
-export function HubDesk({ palette, agentColor, tone, seed }: Omit<StationProps, 'monitorSide'>) {
+export function HubDesk({
+  palette,
+  agentColor,
+  tone,
+  seed,
+  still,
+}: Omit<StationProps, 'monitorSide'>) {
   return (
     <group>
       <Cyl
@@ -216,13 +238,21 @@ export function HubDesk({ palette, agentColor, tone, seed }: Omit<StationProps, 
         position={[-0.07, 0.888, -0.61]}
         rotation={[0, -0.1, 0]}
       />
-      <Monitor palette={palette} tone={tone} position={[-0.78, 0.8, -0.35]} yaw={0.6} seed={seed} />
+      <Monitor
+        palette={palette}
+        tone={tone}
+        position={[-0.78, 0.8, -0.35]}
+        yaw={0.6}
+        seed={seed}
+        still={still}
+      />
       <Monitor
         palette={palette}
         tone={tone}
         position={[0.78, 0.8, -0.35]}
         yaw={-0.6}
         seed={(seed ?? 1) + 7}
+        still={still}
       />
       <Box
         color={palette.metal}

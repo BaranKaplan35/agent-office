@@ -169,3 +169,30 @@ describe('pose blending', () => {
     }
   });
 });
+
+describe('still poses (reduced motion)', () => {
+  const still = { ...ctx, still: true };
+
+  it('hold the same frame whatever the time', () => {
+    for (const action of ACTIONS) {
+      const seated = ['typing', 'reading', 'handRaised', 'slumped', 'nod'].includes(action);
+      const snap = (at: number) =>
+        input(
+          seated
+            ? { sitBlend: 1, seatAction: action as never, action, actionTime: at }
+            : { action, actionTime: at },
+        );
+      expect(computePose(snap(0.3), 1.7, still)).toEqual(computePose(snap(6.1), 42.5, still));
+    }
+  });
+
+  it('keep the hand up and the eyes open', () => {
+    const p = computePose(
+      input({ sitBlend: 1, seatAction: 'handRaised', action: 'handRaised' }),
+      0,
+      still,
+    );
+    expect(p.armRX).toBeGreaterThan(2.5);
+    expect(p.eyeOpen).toBe(1);
+  });
+});

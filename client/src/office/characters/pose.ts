@@ -1,6 +1,6 @@
 /**
  * Procedural poses (pure): a character's joint angles for every action, computed
- * from time with sines â€” no animation clips. The renderer just applies the numbers.
+ * from time with sines — no animation clips. The renderer just applies the numbers.
  *
  * Sign conventions (so every pose reads naturally):
  *   bodyPitch / headPitch  + = leaning / looking down      headYaw + = turning to the character's left
@@ -64,7 +64,12 @@ export interface PoseContext {
   seed: number;
   /** The coordinator at the round hub desk looks between two monitors. */
   hub: boolean;
+  /** Reduced motion: hold one representative frame of each pose (no loops, no blinking). */
+  still?: boolean;
 }
+
+/** The moment of each action shown under reduced motion (seconds into the action). */
+const STILL_ACTION_TIME: Partial<Record<ActionName, number>> = { handRaised: 2 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -292,15 +297,22 @@ export type PoseInput = Pick<
   'sitBlend' | 'walking' | 'walkPhase' | 'action' | 'seatAction' | 'actionTime'
 >;
 
-/** The target pose for a character right now. */
-export function computePose(snap: PoseInput, t: number, ctx: PoseContext): Pose {
+function targetPose(snap: PoseInput, t: number, ctx: PoseContext): Pose {
   const standing = snap.walking
     ? walkPose(snap.walkPhase)
     : standingPose(snap.action, snap.actionTime, t, ctx);
-  const result =
-    snap.sitBlend > 0
-      ? lerpPose(standing, seatedPose(snap.seatAction, snap.actionTime, t, ctx), snap.sitBlend)
-      : standing;
+  return snap.sitBlend > 0
+    ? lerpPose(standing, seatedPose(snap.seatAction, snap.actionTime, t, ctx), snap.sitBlend)
+    : standing;
+}
+
+/** The target pose for a character right now. */
+export function computePose(snap: PoseInput, t: number, ctx: PoseContext): Pose {
+  if (ctx.still) {
+    const held = STILL_ACTION_TIME[snap.sitBlend > 0 ? snap.seatAction : snap.action] ?? 0;
+    return targetPose({ ...snap, actionTime: held, walking: false }, 0, { ...ctx, seed: 0 });
+  }
+  const result = targetPose(snap, t, ctx);
   result.eyeOpen *= blink(t, ctx.seed);
   return result;
 }

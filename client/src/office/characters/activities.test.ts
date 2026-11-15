@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentActivity } from '../../state/selectors';
-import { goalFor, NOD_SECONDS, sameGoal } from './activities';
+import { calmGoalFor, goalFor, NOD_SECONDS, sameGoal } from './activities';
 
 const ALL: AgentActivity[] = [
   'idle',
@@ -52,5 +52,22 @@ describe('goalFor', () => {
     expect(sameGoal(goalFor('working'), goalFor('review'))).toBe(false);
     expect(sameGoal(goalFor('idle'), goalFor('waiting'))).toBe(true);
     expect(sameGoal(goalFor('approved'), { kind: 'desk', pose: 'nod' })).toBe(false);
+  });
+});
+
+describe('calmGoalFor (reduced motion)', () => {
+  it('never wanders and never leaves the desk on a timer', () => {
+    for (const activity of ALL) {
+      const goal = calmGoalFor(activity);
+      expect(goal.kind).not.toBe('free');
+      if (goal.kind === 'desk') expect(goal.thenFree).toBeUndefined();
+    }
+  });
+
+  it('keeps the meaningful poses', () => {
+    expect(calmGoalFor('review')).toEqual({ kind: 'desk', pose: 'handRaised' });
+    expect(calmGoalFor('approved')).toEqual({ kind: 'desk', pose: 'nod' });
+    expect(calmGoalFor('idle')).toEqual({ kind: 'desk', pose: 'reading' });
+    expect(calmGoalFor('done')).toEqual({ kind: 'celebrate' });
   });
 });

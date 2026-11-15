@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { ActivityTone } from '../../state/selectors';
 import type { DeskSlot } from '../layout';
 import { Desk, HubDesk } from '../models/Furniture';
+import { StaticBatch } from '../models/StaticBatch';
 import type { ScenePalette } from './palette';
 
 interface Props {
@@ -14,16 +15,37 @@ interface Props {
   selected: boolean;
   withPlant?: boolean;
   seed?: number;
+  /** Reduced motion: nothing on the desk animates. */
+  still?: boolean;
   /** Present when the agent has something to open (a report or the final output). */
   onOpen?: () => void;
 }
 
 /** One agent's workstation: furniture, selection ring and click handling. */
-export function Station({ slot, agent, palette, tone, selected, withPlant, seed, onOpen }: Props) {
+export function Station({
+  slot,
+  agent,
+  palette,
+  tone,
+  selected,
+  withPlant,
+  seed,
+  still,
+  onOpen,
+}: Props) {
   const [hovered, setHovered] = useState(false);
   useCursor(hovered && !!onOpen);
 
   const hub = agent.type === 'coordinator';
+  // Re-merge the desk only when something static about it changes (a string, so
+  // re-renders with the same values don't count).
+  const batchVersion = JSON.stringify([
+    palette,
+    agent.deskColor,
+    slot.monitorSide,
+    withPlant,
+    seed,
+  ]);
   const ring: [number, number] = hub ? [2.0, 2.12] : [1.45, 1.56];
 
   return (
@@ -31,7 +53,8 @@ export function Station({ slot, agent, palette, tone, selected, withPlant, seed,
       position={[slot.x, 0, slot.z]}
       rotation={[0, slot.rotationY, 0]}
       onClick={(e) => {
-        if (!onOpen) return;
+        // a drag that turned the camera is not a click
+        if (!onOpen || e.delta > 6) return;
         e.stopPropagation();
         onOpen();
       }}
@@ -41,18 +64,27 @@ export function Station({ slot, agent, palette, tone, selected, withPlant, seed,
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {hub ? (
-        <HubDesk palette={palette} agentColor={agent.deskColor} tone={tone} seed={seed} />
-      ) : (
-        <Desk
-          palette={palette}
-          agentColor={agent.deskColor}
-          tone={tone}
-          monitorSide={slot.monitorSide}
-          withPlant={withPlant}
-          seed={seed}
-        />
-      )}
+      <StaticBatch version={batchVersion}>
+        {hub ? (
+          <HubDesk
+            palette={palette}
+            agentColor={agent.deskColor}
+            tone={tone}
+            seed={seed}
+            still={still}
+          />
+        ) : (
+          <Desk
+            palette={palette}
+            agentColor={agent.deskColor}
+            tone={tone}
+            monitorSide={slot.monitorSide}
+            withPlant={withPlant}
+            seed={seed}
+            still={still}
+          />
+        )}
+      </StaticBatch>
 
       {(selected || (hovered && !!onOpen)) && (
         <mesh position={[0, 0.02, hub ? 0.5 : 0.3]} rotation={[-Math.PI / 2, 0, 0]}>

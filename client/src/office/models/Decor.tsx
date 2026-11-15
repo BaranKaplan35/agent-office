@@ -170,7 +170,7 @@ export function WallClock({ palette, hour }: { palette: ScenePalette; hour: numb
           />
         );
       })}
-      <group position={[0, 0, 0.055]} rotation={[0, 0, hourAngle]}>
+      <group position={[0, 0, 0.055]} rotation={[0, 0, hourAngle]} userData={{ dynamic: true }}>
         <Box
           color={palette.ink}
           size={[0.035, 0.19, 0.012]}
@@ -178,7 +178,7 @@ export function WallClock({ palette, hour }: { palette: ScenePalette; hour: numb
           castShadow={false}
         />
       </group>
-      <group position={[0, 0, 0.065]} rotation={[0, 0, minuteAngle]}>
+      <group position={[0, 0, 0.065]} rotation={[0, 0, minuteAngle]} userData={{ dynamic: true }}>
         <Box
           color={palette.ink}
           size={[0.025, 0.28, 0.012]}

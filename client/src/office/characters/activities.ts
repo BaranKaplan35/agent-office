@@ -43,6 +43,17 @@ export function goalFor(activity: AgentActivity): Goal {
   }
 }
 
+/**
+ * Reduced motion: nobody wanders and nothing loops. Free time is spent quietly
+ * at the desk, and an approval no longer sends the agent off afterwards.
+ */
+export function calmGoalFor(activity: AgentActivity): Goal {
+  const goal = goalFor(activity);
+  if (goal.kind === 'free') return { kind: 'desk', pose: 'reading' };
+  if (goal.kind === 'desk' && goal.thenFree !== undefined) return { kind: 'desk', pose: goal.pose };
+  return goal;
+}
+
 export function sameGoal(a: Goal, b: Goal): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'desk' && b.kind === 'desk') return a.pose === b.pose && a.thenFree === b.thenFree;

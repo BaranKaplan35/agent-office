@@ -1,12 +1,12 @@
 /**
- * Time of day â†’ lighting (pure). The scene calls `daylight(hour)` with the
+ * Time of day → lighting (pure). The scene calls `daylight(hour)` with the
  * viewer's local time (or `?hour=19.5` for screenshots) and applies the result
  * to its lights and to the sky outside the windows.
  *
  * Everything is keyframed and eased between keyframes, so the light never jumps.
- * Azimuth: 0Â° = straight through the window wall, + towards +X (morning side),
+ * Azimuth: 0° = straight through the window wall, + towards +X (morning side),
  * - towards -X (evening side). The room only has windows on one wall, so the
- * range stays within about Â±55Â°.
+ * range stays within about ±55°.
  */
 
 export interface KeyLight {
@@ -24,9 +24,9 @@ export interface DaylightState {
   hemisphere: { sky: string; ground: string; intensity: number };
   /** Colours of the sky gradient seen through the windows. */
   sky: { top: string; bottom: string };
-  /** 0 (off) â€¦ 1 (full): how strongly the pendant lamps glow. */
+  /** 0 (off) … 1 (full): how strongly the pendant lamps glow. */
   lamps: number;
-  /** 0 (bright day) â€¦ 1 (deep night). */
+  /** 0 (bright day) … 1 (deep night). */
   night: number;
   celestial: { kind: 'sun' | 'moon'; azimuthDeg: number; elevationDeg: number };
 }
@@ -46,8 +46,8 @@ interface Keyframe {
   night: number;
 }
 
-// The moon crosses the window wall over the night: -35Â° at 21:30, 0Â° at midnight,
-// +45Â° at 05:00, so the light never swings suddenly at dawn or dusk.
+// The moon crosses the window wall over the night: -35° at 21:30, 0° at midnight,
+// +45° at 05:00, so the light never swings suddenly at dawn or dusk.
 const NIGHT: Omit<Keyframe, 'h'> = {
   key: '#8ea3e8',
   keyI: 0.45,
