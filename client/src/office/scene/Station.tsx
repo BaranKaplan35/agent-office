@@ -13,12 +13,13 @@ interface Props {
   tone: ActivityTone;
   selected: boolean;
   withPlant?: boolean;
+  seed?: number;
   /** Present when the agent has something to open (a report or the final output). */
   onOpen?: () => void;
 }
 
 /** One agent's workstation: furniture, selection ring and click handling. */
-export function Station({ slot, agent, palette, tone, selected, withPlant, onOpen }: Props) {
+export function Station({ slot, agent, palette, tone, selected, withPlant, seed, onOpen }: Props) {
   const [hovered, setHovered] = useState(false);
   useCursor(hovered && !!onOpen);
 
@@ -41,7 +42,7 @@ export function Station({ slot, agent, palette, tone, selected, withPlant, onOpe
       onPointerOut={() => setHovered(false)}
     >
       {hub ? (
-        <HubDesk palette={palette} agentColor={agent.deskColor} tone={tone} />
+        <HubDesk palette={palette} agentColor={agent.deskColor} tone={tone} seed={seed} />
       ) : (
         <Desk
           palette={palette}
@@ -49,6 +50,7 @@ export function Station({ slot, agent, palette, tone, selected, withPlant, onOpe
           tone={tone}
           monitorSide={slot.monitorSide}
           withPlant={withPlant}
+          seed={seed}
         />
       )}
 

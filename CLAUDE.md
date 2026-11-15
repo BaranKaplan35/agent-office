@@ -107,7 +107,13 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
     `TagProjector.tsx` (DOM name tags glued to 3D points), `palette.ts` (CSS tokens →
     scene colours), `useSceneHour.ts` (`?hour=` override)
   - `models/` — procedural props: `Room`, `Furniture`, `Decor`, `Outside`, `parts` (primitives)
-  - 1c-2 adds `characters/` (rig, poses, `activities.ts`) and `navigation/` (grid + A*)
+  - `characters/` — `brain.ts` (behaviour state machine, pure), `pose.ts` (joint angles,
+    pure), `activities.ts` (activity → goal), `appearance.ts`, `spotRegistry.ts`;
+    `Character.tsx` (rig, applies poses), `Confetti.tsx`
+  - `navigation/` — `grid.ts` (A\* + line-of-sight), `office.ts` (obstacles, seats, idle and
+    celebration spots); `props.ts` — fixed furniture placements shared by scene and navigation
+  - `scene/Cast.tsx` — one brain per agent, sets goals from `agentActivity`; characters
+    never read React context and never decide anything themselves
   - Scene components never read React context: the stage passes translated text as props
 - `client/src/styles/tokens.css` — "Daylight Studio" colour tokens (light + dark)
 
@@ -140,7 +146,7 @@ the current phase is finished, never mid-phase.
 - [x] Phase 1a — team loader + schema, mock provider, orchestrator, REST + SSE
 - [x] Phase 1b — team picker, task input, review queue, report viewer, final output, export
 - [x] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
-- [ ] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
+- [x] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
 - [ ] Phase 1c-3 — flying envelopes, full status bubbles, camera controls + focus, reduced motion, perf
 - [ ] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
 - [ ] Phase 2b — model labels on desks/reports, per-report tokens + duration, mixed-team README example

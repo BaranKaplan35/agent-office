@@ -14,14 +14,17 @@
 
 export const ROOM = {
   width: 13, // along X
-  depth: 11, // along Z
+  depth: 12, // along Z
   wallHeight: 3.4,
   wallThickness: 0.35,
   floorSlab: 0.6,
 } as const;
 
-export const DESK = { width: 2, depth: 1, chairOffset: 0.95 } as const;
-export const HUB_POSITION = { x: 0.6, z: 0.2 } as const;
+export const DESK = { width: 2, depth: 1, chairOffset: 0.75 } as const;
+/** Seat position along a desk's local +Z (worker desks, hub). */
+export const CHAIR_Z = DESK.chairOffset;
+export const HUB_CHAIR_Z = 1.3;
+export const HUB_POSITION = { x: 0.6, z: 0.9 } as const;
 export const HUB_RADIUS = 1.35;
 
 const ARC_RADIUS = 3.9;

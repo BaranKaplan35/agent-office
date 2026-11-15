@@ -10,16 +10,18 @@ import {
   type AgentActivity,
   type Selection,
 } from '../../state/selectors';
-import { buildLayout, HUB_POSITION, ROOM } from '../layout';
+import { buildLayout, HUB_POSITION } from '../layout';
 import { BushPlant, PendantLamp, TallPlant, WallClock } from '../models/Decor';
 import { Bookshelf, CoffeeCorner, Rug } from '../models/Furniture';
 import { Outside } from '../models/Outside';
+import { LAMP_Y, LAMPS, PLANTS } from '../props';
 import { Room } from '../models/Room';
 import { profileFor, useQuality, useQualityLevel } from '../quality';
 import { CameraRig } from './CameraRig';
 import { daylight } from './daylight';
 import { Lighting } from './Lighting';
 import { useScenePalette } from './palette';
+import { Cast, type CastEntry } from './Cast';
 import { DeskTag } from './DeskTag';
 import { Station } from './Station';
 import { TagProjector, type TagAnchor } from './TagProjector';
@@ -39,13 +41,6 @@ export interface OfficeSceneProps {
     open: (agentName: string) => string;
   };
 }
-
-const LAMPS: Array<{ x: number; z: number }> = [
-  { x: HUB_POSITION.x, z: HUB_POSITION.z },
-  { x: -ROOM.width / 2 + 1.7, z: 3.0 },
-  { x: -ROOM.width / 2 + 1.6, z: -3.4 },
-];
-const LAMP_Y = 2.55;
 
 export default function OfficeScene({
   team,
@@ -85,6 +80,14 @@ export default function OfficeScene({
       },
     ];
   });
+  const castEntries: CastEntry[] = entries.map(({ slot, agent, index, activity, open }) => ({
+    slot,
+    agent,
+    index,
+    activity,
+    open,
+  }));
+  const celebrating = entries.length > 0 && entries.every((e) => e.activity === 'done');
   const anchors = entries.map(({ slot, agent }): TagAnchor => ({
     id: agent.id,
     position: [slot.x, agent.type === 'coordinator' ? 3.1 : 2.9, slot.z],
@@ -113,15 +116,23 @@ export default function OfficeScene({
         <Bookshelf palette={palette} />
         <CoffeeCorner palette={palette} />
         <WallClock palette={palette} hour={light.hour} />
-        <TallPlant
-          palette={palette}
-          position={[-ROOM.width / 2 + 0.6, 0, -ROOM.depth / 2 + 0.6]}
-          scale={1.15}
-        />
-        <BushPlant palette={palette} position={[3.3, 0, -ROOM.depth / 2 + 0.6]} scale={0.95} />
-        <BushPlant palette={palette} position={[-ROOM.width / 2 + 0.7, 0, 0.6]} scale={0.8} />
-        <TallPlant palette={palette} position={[ROOM.width / 2 - 0.8, 0, -1.2]} />
-        <BushPlant palette={palette} position={[ROOM.width / 2 - 0.8, 0, 4.0]} scale={0.9} />
+        {PLANTS.map((plant, i) =>
+          plant.kind === 'tall' ? (
+            <TallPlant
+              key={i}
+              palette={palette}
+              position={[plant.x, 0, plant.z]}
+              scale={plant.scale}
+            />
+          ) : (
+            <BushPlant
+              key={i}
+              palette={palette}
+              position={[plant.x, 0, plant.z]}
+              scale={plant.scale}
+            />
+          ),
+        )}
         {LAMPS.map((lamp, i) => (
           <PendantLamp
             key={i}
@@ -141,9 +152,17 @@ export default function OfficeScene({
             tone={tone}
             selected={selected}
             withPlant={index % 2 === 1}
+            seed={index + 1}
             onOpen={open}
           />
         ))}
+        <Cast
+          layout={layout}
+          entries={castEntries}
+          palette={palette}
+          celebrating={celebrating}
+          teamKey={team.id}
+        />
         <TagProjector anchors={anchors} registry={tagRegistry} />
       </Canvas>
 

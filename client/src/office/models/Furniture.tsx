@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import type { ActivityTone } from '../../state/selectors';
-import { DESK, HUB_RADIUS, MONITOR_YAW, ROOM } from '../layout';
+import { DESK, HUB_CHAIR_Z, HUB_RADIUS, MONITOR_YAW } from '../layout';
+import { BOOKSHELF, COFFEE_CORNER, COFFEE_STOOLS } from '../props';
 import { mixHex } from '../scene/daylight';
 import type { ScenePalette } from '../scene/palette';
 import { SmallPlant } from './Decor';
 import { Ball, Box, Cyl, InstancedBoxes, seeded, type InstanceItem, type V3 } from './parts';
+import { ScreenLines } from './ScreenLines';
 import { toneColors } from './tone';
 
 /** Electronics stay dark graphite in both themes. */
@@ -12,18 +14,19 @@ const GRAPHITE = '#2a2f36';
 
 // ------------------------------------------------------------------ monitor
 
-const LINE_WIDTHS = [0.5, 0.64, 0.38, 0.58, 0.3, 0.46];
-
 export function Monitor({
   palette,
   tone,
   position,
   yaw = 0,
+  seed = 1,
 }: {
   palette: ScenePalette;
   tone: ActivityTone;
   position: V3;
   yaw?: number;
+  /** Varies the line pattern between monitors. */
+  seed?: number;
 }) {
   const screen = toneColors(palette, tone);
   const lit = tone !== 'muted';
@@ -40,13 +43,7 @@ export function Monitor({
           emissiveIntensity={screen.intensity * (lit ? 0.55 : 1)}
         />
       </mesh>
-      {lit &&
-        LINE_WIDTHS.map((w, i) => (
-          <mesh key={i} position={[-0.33 + (w / 2) * 0.8, 0.66 - i * 0.065, 0.025]}>
-            <planeGeometry args={[w * 0.8, 0.028]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.78} toneMapped={false} />
-          </mesh>
-        ))}
+      {lit && <ScreenLines animate={tone === 'working'} seed={seed} />}
       {/* a status light on the back, so the state is visible from behind too */}
       <Box
         color={screen.color}
@@ -87,10 +84,12 @@ export interface StationProps {
   tone: ActivityTone;
   monitorSide: 1 | -1;
   withPlant?: boolean;
+  /** Varies the monitor text pattern. */
+  seed?: number;
 }
 
 /** A worker's desk with its monitor, props and chair (local +Z = chair side). */
-export function Desk({ palette, agentColor, tone, monitorSide, withPlant }: StationProps) {
+export function Desk({ palette, agentColor, tone, monitorSide, withPlant, seed }: StationProps) {
   const drawer = mixHex(palette.wood, agentColor, 0.45);
   return (
     <group>
@@ -117,7 +116,7 @@ export function Desk({ palette, agentColor, tone, monitorSide, withPlant }: Stat
       <Box
         color={agentColor}
         size={[0.95, 0.008, 0.46]}
-        position={[-0.15, 0.783, 0.14]}
+        position={[-0.15, 0.783, 0.3]}
         castShadow={false}
       />
 
@@ -125,18 +124,18 @@ export function Desk({ palette, agentColor, tone, monitorSide, withPlant }: Stat
         color={palette.metal}
         size={[0.44, 0.02, 0.14]}
         radius={0.008}
-        position={[-0.15, 0.8, 0.16]}
+        position={[-0.15, 0.8, 0.32]}
       />
       <Box
         color={palette.metal}
         size={[0.06, 0.025, 0.1]}
         radius={0.012}
-        position={[0.27, 0.8, 0.16]}
+        position={[0.27, 0.8, 0.32]}
       />
       <Box
         color={palette.surface}
         size={[0.26, 0.012, 0.34]}
-        position={[-0.78, 0.786, 0.1]}
+        position={[-0.78, 0.786, 0.2]}
         rotation={[0, 0.25, 0]}
       />
       <Cyl
@@ -152,6 +151,7 @@ export function Desk({ palette, agentColor, tone, monitorSide, withPlant }: Stat
         tone={tone}
         position={[monitorSide * 0.62, 0.78, -0.22]}
         yaw={-monitorSide * MONITOR_YAW}
+        seed={seed}
       />
       {withPlant && <SmallPlant palette={palette} position={[-0.8, 0.78, -0.3]} />}
       <Chair palette={palette} color={agentColor} />
@@ -162,7 +162,7 @@ export function Desk({ palette, agentColor, tone, monitorSide, withPlant }: Stat
 // ---------------------------------------------------------------- hub desk
 
 /** The coordinator's round hub desk (local +Z = chair side). */
-export function HubDesk({ palette, agentColor, tone }: Omit<StationProps, 'monitorSide'>) {
+export function HubDesk({ palette, agentColor, tone, seed }: Omit<StationProps, 'monitorSide'>) {
   return (
     <group>
       <Cyl
@@ -216,23 +216,29 @@ export function HubDesk({ palette, agentColor, tone }: Omit<StationProps, 'monit
         position={[-0.07, 0.888, -0.61]}
         rotation={[0, -0.1, 0]}
       />
-      <Monitor palette={palette} tone={tone} position={[-0.78, 0.8, -0.35]} yaw={0.6} />
-      <Monitor palette={palette} tone={tone} position={[0.78, 0.8, -0.35]} yaw={-0.6} />
+      <Monitor palette={palette} tone={tone} position={[-0.78, 0.8, -0.35]} yaw={0.6} seed={seed} />
+      <Monitor
+        palette={palette}
+        tone={tone}
+        position={[0.78, 0.8, -0.35]}
+        yaw={-0.6}
+        seed={(seed ?? 1) + 7}
+      />
       <Box
         color={palette.metal}
         size={[0.5, 0.02, 0.15]}
         radius={0.008}
-        position={[0, 0.81, 0.18]}
+        position={[0, 0.81, 0.95]}
       />
       <Cyl
         radius={0.05}
         height={0.09}
-        position={[0.95, 0.855, 0.35]}
+        position={[0.95, 0.855, 0.7]}
         color={palette.surface}
         segments={10}
       />
       <SmallPlant palette={palette} position={[-1.0, 0.8, 0.3]} />
-      <group position={[0, 0, 0.6]}>
+      <group position={[0, 0, HUB_CHAIR_Z - DESK.chairOffset]}>
         <Chair palette={palette} color={agentColor} />
       </group>
     </group>
@@ -302,7 +308,7 @@ export function Bookshelf({ palette }: { palette: ScenePalette }) {
   }, [palette]);
 
   return (
-    <group position={[-ROOM.width / 2 + 0.27, 0, -3.4]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={[BOOKSHELF.x, 0, BOOKSHELF.z]} rotation={[0, Math.PI / 2, 0]}>
       <Box color={palette.wood} size={[0.05, 2.38, 0.5]} position={[-1.2, 1.19, 0]} />
       <Box color={palette.wood} size={[0.05, 2.38, 0.5]} position={[1.2, 1.19, 0]} />
       <Box color={palette.woodDark} size={[2.4, 2.38, 0.03]} position={[0, 1.19, -0.235]} />
@@ -317,7 +323,7 @@ export function Bookshelf({ palette }: { palette: ScenePalette }) {
 export function CoffeeCorner({ palette }: { palette: ScenePalette }) {
   const mugColors = [palette.primary, palette.accent, palette.surface];
   return (
-    <group position={[-ROOM.width / 2 + 0.38, 0, 3.0]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={[COFFEE_CORNER.x, 0, COFFEE_CORNER.z]} rotation={[0, Math.PI / 2, 0]}>
       <Box color={palette.woodDark} size={[2.4, 0.88, 0.7]} radius={0.03} position={[0, 0.44, 0]} />
       <Box
         color={palette.surface}
@@ -391,8 +397,8 @@ export function CoffeeCorner({ palette }: { palette: ScenePalette }) {
       ))}
 
       {/* stools */}
-      {[-0.55, 0.45].map((x, i) => (
-        <group key={x} position={[x, 0, 0.95 + i * 0.05]}>
+      {COFFEE_STOOLS.map(({ lx, lz }, i) => (
+        <group key={lx} position={[lx, 0, lz]}>
           <Cyl
             radius={0.22}
             height={0.07}

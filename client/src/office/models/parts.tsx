@@ -195,7 +195,7 @@ interface InstancedBoxesProps {
   roughness?: number;
 }
 
-/** Many unit boxes drawn in a single call (floor planks, books …). */
+/** Many unit boxes drawn in a single call (floor planks, books â€¦). */
 export function InstancedBoxes({
   items,
   castShadow = true,
@@ -235,14 +235,4 @@ export function InstancedBoxes({
   );
 }
 
-/** Small deterministic PRNG so every office looks the same on every load. */
-export function seeded(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+export { seeded } from '../random';

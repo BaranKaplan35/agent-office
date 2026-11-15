@@ -81,7 +81,34 @@ Done as planned, with these decisions made along the way:
   Auto starts High and drops via drei `PerformanceMonitor`
 - Scene background and materials follow the light/dark theme tokens
 
-### 1c-2 — Characters and animation
+### 1c-2 — Characters and animation ✅
+
+Done as planned, with these decisions made along the way:
+
+- **Pure brain, thin renderer.** All behaviour is Three.js-free and unit tested:
+  `navigation/` (grid, A\* with line-of-sight smoothing, furniture obstacles, idle
+  and celebration spots), `characters/brain.ts` (state machine: seated → rising →
+  walking → acting / celebrating → sitting), `characters/pose.ts` (joint angles from
+  sines), `characters/activities.ts` (activity → goal), `characters/appearance.ts`.
+  `Character.tsx` only applies the numbers to the rig
+- Tests found real layout bugs: the room is now 12 deep (was 11) and the hub sits
+  further forward, so every seat has room behind the chair and every spot can reach
+  every other (checked for 2–5 workers)
+- Seats were tucked in (chair 0.75 from the desk centre) and keyboards moved closer
+  so the typing hands actually reach them
+- Looks come from the agent: skin, hair and outfit derive from the id and desk
+  colour; the accessory comes from the icon (headset for the coordinator, glasses for
+  code / cpu, cap, goggles, headband). Hats and headbands get the short haircut
+- Activities: planning / working / revising / merging type, coordinating reads,
+  review raises a hand (9 s cycle, 5 s raised), approved nods for 2.2 s then wanders,
+  failed slumps, done gathers on the rug and cheers with confetti; waiting / idle /
+  not needed wander (coffee with a mug, window, bookshelf, stretch)
+- Characters hurry (1.55×) when going back to work, so a task visibly starts fast
+- Monitor text scrolls while an agent is working
+- Clicking a character opens its report, like the name tag
+- Not yet done (planned for 1c-3): `prefers-reduced-motion` still lets characters
+  wander; the camera is still fixed
+- Original plan for this sub-phase:
 
 - Cute, chunky low-poly figures built from primitives: big head, small body,
   stubby limbs, agent-colour outfit; simple face (eyes, blush), a role accessory
