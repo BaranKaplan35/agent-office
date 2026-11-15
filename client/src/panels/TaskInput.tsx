@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useI18n } from '../i18n/context';
-import { isTaskActive } from '../state/selectors';
+import { isTaskActive, unavailableAgents } from '../state/selectors';
 import { useApp, useCurrentTeam } from '../state/store';
 
 const MAX_PROMPT = 4000;
@@ -15,6 +15,7 @@ export function TaskInput() {
   const startTask = useApp((s) => s.startTask);
   const cancel = useApp((s) => s.cancel);
   const newTask = useApp((s) => s.newTask);
+  const refreshTeams = useApp((s) => s.refreshTeams);
 
   const [prompt, setPrompt] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -22,7 +23,9 @@ export function TaskInput() {
   const active = isTaskActive(task) || (taskId !== null && task === null);
   const finished = !!task && !active;
   const sending = pending === 'create';
-  const canSend = !!team && !active && !sending && prompt.trim().length >= MIN_PROMPT;
+  const blocked = unavailableAgents(team);
+  const canSend =
+    !!team && !active && !sending && blocked.length === 0 && prompt.trim().length >= MIN_PROMPT;
 
   async function submit(e?: FormEvent) {
     e?.preventDefault();
@@ -42,6 +45,31 @@ export function TaskInput() {
 
   return (
     <form className="task card" onSubmit={submit}>
+      {!active && blocked.length > 0 && (
+        <div className="task-blocked" role="status">
+          <div>
+            <strong>{t('task.teamUnavailable')}</strong>
+            <ul>
+              {blocked.map((agent) => (
+                <li key={agent.id}>
+                  {t('task.unavailableAgent', {
+                    name: agent.name[lang],
+                    reason: agent.unavailable ?? '',
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={pending === 'teams'}
+            onClick={() => void refreshTeams()}
+          >
+            {t('task.recheck')}
+          </button>
+        </div>
+      )}
       <label className="sr-only" htmlFor="task-input">
         {t('task.label')}
       </label>

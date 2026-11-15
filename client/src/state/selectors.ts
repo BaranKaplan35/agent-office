@@ -283,6 +283,11 @@ export function coordinatorOf(team: PublicTeam): PublicAgent | undefined {
   return team.agents.find((a) => a.type === 'coordinator');
 }
 
+/** Agents whose model can't be used right now; the team can't start a task while any exist. */
+export function unavailableAgents(team: PublicTeam | null | undefined): PublicAgent[] {
+  return team?.agents.filter((a) => !!a.unavailable) ?? [];
+}
+
 export function findAgent(team: PublicTeam | null, id: string): PublicAgent | undefined {
   return team?.agents.find((a) => a.id === id);
 }

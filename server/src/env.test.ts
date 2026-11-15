@@ -18,14 +18,24 @@ describe('parseEnv', () => {
     expect(parseEnv({ SERVER_PORT: '4000' }).port).toBe(4000);
   });
 
-  it('requires a Gemini key when the Gemini provider is selected', () => {
-    expect(() => parseEnv({ LLM_PROVIDER: 'gemini' })).toThrow(/GEMINI_API_KEY/);
+  it('does not stop the server for a missing key (the preflight reports it instead)', () => {
+    const env = parseEnv({ LLM_PROVIDER: 'gemini' });
+    expect(env.GEMINI_API_KEY).toBeUndefined();
+    expect(env.GEMINI_MODEL).toBe('gemini-3.6-flash');
   });
 
-  it('requires an Anthropic key when the Anthropic provider is selected', () => {
-    expect(() => parseEnv({ LLM_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: '' })).toThrow(
-      /ANTHROPIC_API_KEY/,
-    );
+  it('has local-model defaults: one Ollama call at a time, more patience', () => {
+    const env = parseEnv({});
+    expect(env.OLLAMA_BASE_URL).toBe('http://localhost:11434');
+    expect(env.OLLAMA_CONCURRENCY).toBe(1);
+    expect(env.OLLAMA_TIMEOUT_MS).toBeGreaterThan(env.LLM_TIMEOUT_MS);
+  });
+
+  it('accepts every provider and treats blank keys as missing', () => {
+    for (const p of ['mock', 'gemini', 'anthropic', 'ollama', 'openrouter']) {
+      expect(parseEnv({ LLM_PROVIDER: p }).LLM_PROVIDER).toBe(p);
+    }
+    expect(parseEnv({ OPENROUTER_API_KEY: '  ' }).OPENROUTER_API_KEY).toBeUndefined();
   });
 
   it('rejects unknown providers', () => {

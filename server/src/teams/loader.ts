@@ -63,11 +63,20 @@ export async function loadTeamsFromDir(dir: string): Promise<TeamLoadResult> {
   return { teams, errors };
 }
 
-/** Team as sent to the browser: system prompts and mock data stay on the server. */
-export function toPublicTeam(team: TeamConfig): PublicTeam {
+/**
+ * Team as sent to the browser: system prompts and mock data stay on the server.
+ * `unavailable` maps agent ids to the reason their model can't be used right now.
+ */
+export function toPublicTeam(
+  team: TeamConfig,
+  unavailable: ReadonlyMap<string, string> = new Map(),
+): PublicTeam {
   return {
     ...team,
-    agents: team.agents.map(({ systemPrompt: _s, mockResponse: _m, ...agent }) => agent),
+    agents: team.agents.map(({ systemPrompt: _s, mockResponse: _m, ...agent }) => {
+      const reason = unavailable.get(agent.id);
+      return reason ? { ...agent, unavailable: reason } : agent;
+    }),
   };
 }
 

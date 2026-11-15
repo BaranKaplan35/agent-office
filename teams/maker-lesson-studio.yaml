@@ -4,6 +4,9 @@
 # Optional per agent: `personality` (social, diligent, coffee, calm, curious) decides
 # what the character does in its free time in the 3D office; without it, one is
 # derived from the name.
+# Optional per agent: `llm: { provider, model }` runs that agent on its own model
+# (mock, gemini, anthropic, ollama, openrouter). Without it the .env default applies.
+# Here Quinn runs on a local Ollama model while the rest use the default: a mixed team.
 
 id: maker-lesson-studio
 version: 1
@@ -130,6 +133,7 @@ agents:
     role: { en: Test & QA, tr: Test }
     icon: shield-check
     deskColor: '#22A06B'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     dependsOn: [circuit, code]
     systemPrompt: |
       You are Quinn, a careful teacher who dry-runs every lesson before class.

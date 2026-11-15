@@ -9,6 +9,7 @@ import {
 import { Router } from 'express';
 import { z } from 'zod';
 import type { Env } from '../env';
+import type { PreflightProblem } from '../llm/preflight';
 import { MAX_NOTE_LENGTH, type Orchestrator } from '../orchestrator/orchestrator';
 import { toPublicTeam, type TeamRegistry } from '../teams/loader';
 import { HttpError, parseBody } from './errors';
@@ -30,10 +31,19 @@ export interface ApiDeps {
   env: Env;
   teams: TeamRegistry;
   orchestrator: Orchestrator;
+  /** Agents whose model can't be used right now (from the preflight). */
+  problems?: () => ReadonlyArray<PreflightProblem>;
 }
 
-export function apiRouter({ env, teams, orchestrator }: ApiDeps): Router {
+export function apiRouter({ env, teams, orchestrator, problems = () => [] }: ApiDeps): Router {
   const api = Router();
+
+  const unavailableIn = (teamId: string) =>
+    new Map(
+      problems()
+        .filter((p) => p.teamId === teamId)
+        .map((p) => [p.agentId, p.reason]),
+    );
 
   api.get('/health', (_req, res) => {
     const body: HealthResponse = { ok: true, provider: env.LLM_PROVIDER, version: APP_VERSION };
@@ -42,19 +52,28 @@ export function apiRouter({ env, teams, orchestrator }: ApiDeps): Router {
 
   // ---- teams
   api.get('/teams', (_req, res) => {
-    const body: PublicTeam[] = teams.list().map(toPublicTeam);
+    const body: PublicTeam[] = teams.list().map((t) => toPublicTeam(t, unavailableIn(t.id)));
     res.json(body);
   });
 
   api.get('/teams/:teamId', (req, res) => {
     const team = teams.get(req.params.teamId);
     if (!team) throw new HttpError(404, 'not_found', `Unknown team "${req.params.teamId}"`);
-    res.json(toPublicTeam(team) satisfies PublicTeam);
+    res.json(toPublicTeam(team, unavailableIn(team.id)) satisfies PublicTeam);
   });
 
   // ---- tasks
   api.post('/tasks', (req, res) => {
     const body = parseBody(CreateTaskBody, req.body);
+    const blocked = problems().filter((p) => p.teamId === body.teamId);
+    if (blocked.length > 0) {
+      const who = blocked.map((p) => `${p.agentName} (${p.provider}:${p.model}): ${p.reason}`);
+      throw new HttpError(
+        409,
+        'team_unavailable',
+        `This team can't run right now. ${who.join('; ')}`,
+      );
+    }
     const task = orchestrator.createTask(body);
     res.status(201).json({ taskId: task.id } satisfies CreateTaskResponse);
   });

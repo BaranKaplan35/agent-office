@@ -972,9 +972,27 @@ button.queue-item:hover {
 
 .task {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: flex-start;
   padding: 12px;
+}
+.task-blocked {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--line));
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  font-size: 13px;
+}
+.task-blocked ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
 }
 .task-field {
   flex: 1;

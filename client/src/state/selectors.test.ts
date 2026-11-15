@@ -12,6 +12,7 @@ import {
   revisionsLeft,
   sameSelection,
   selectionForAgent,
+  unavailableAgents,
 } from './selectors';
 
 const agent = (id: string, type: 'coordinator' | 'worker' = 'worker') => ({
@@ -192,5 +193,19 @@ describe('small helpers', () => {
       'isikli-calar-saat-ogrenciler-icin.md',
     );
     expect(exportFilename('???')).toBe('agent-office.md');
+  });
+});
+
+describe('unavailableAgents', () => {
+  it('lists the agents whose model cannot be used right now', () => {
+    const blocked = {
+      ...team,
+      agents: team.agents.map((a) =>
+        a.id === 'b' ? { ...a, unavailable: 'Ollama is not running' } : a,
+      ),
+    };
+    expect(unavailableAgents(blocked).map((a) => a.id)).toEqual(['b']);
+    expect(unavailableAgents(team)).toEqual([]);
+    expect(unavailableAgents(null)).toEqual([]);
   });
 });

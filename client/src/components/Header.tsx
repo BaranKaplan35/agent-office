@@ -1,7 +1,7 @@
 import { LANGS } from '@agent-office/shared';
 import { useServerStatus } from '../api/useServerStatus';
 import { useI18n } from '../i18n/context';
-import { isTaskActive } from '../state/selectors';
+import { isTaskActive, unavailableAgents } from '../state/selectors';
 import { useApp } from '../state/store';
 import { QualityMenu } from './QualityMenu';
 
@@ -40,6 +40,7 @@ function TeamPicker() {
         {teams.map((team) => (
           <option key={team.id} value={team.id}>
             {team.name[lang]}
+            {unavailableAgents(team).length > 0 ? ` ${t('header.teamUnavailable')}` : ''}
           </option>
         ))}
       </select>

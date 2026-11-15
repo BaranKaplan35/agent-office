@@ -38,6 +38,17 @@ export interface AgentConfig {
    * a stable personality is derived from the agent's name.
    */
   personality?: Personality;
+  /**
+   * Which model this agent runs on. Optional: without it the `.env` default applies
+   * (`LLM_PROVIDER` and that provider's default model). Without `model`, the
+   * provider's default model is used.
+   */
+  llm?: AgentLLM;
+}
+
+export interface AgentLLM {
+  provider: LLMProviderName;
+  model?: string;
 }
 
 export type Personality = (typeof PERSONALITIES)[number];
@@ -60,7 +71,13 @@ export interface TeamConfig {
 }
 
 /** Team as sent to the client: system prompts and mock data stay on the server. */
-export type PublicAgent = Omit<AgentConfig, 'systemPrompt' | 'mockResponse'>;
+export type PublicAgent = Omit<AgentConfig, 'systemPrompt' | 'mockResponse'> & {
+  /**
+   * Set when this agent's model can't be used right now (missing API key, Ollama not
+   * running or the model not pulled). The team can't start tasks until it is fixed.
+   */
+  unavailable?: string;
+};
 export type PublicTeam = Omit<TeamConfig, 'agents'> & { agents: PublicAgent[] };
 
 // ---------------------------------------------------------------------------

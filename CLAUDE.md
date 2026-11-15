@@ -28,8 +28,9 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
    feature needs per-team behaviour, add an optional schema field.
 2. **All model calls go through `server/src/llm/`.** `index.ts` is the only place that
    maps a provider name to an adapter; nothing else imports a provider SDK or calls a
-   provider URL. Providers: `mock | gemini | anthropic | ollama | openrouter` (only
-   `mock` exists until phase 2). Each agent may set `llm: { provider, model }` in its
+   provider URL (the startup preflight in `llm/preflight.ts` is the one other place that
+   asks Ollama for its model list). Providers: `mock | gemini | anthropic | ollama |
+openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { provider, model }` in its
    YAML; without it the `.env` default applies (`LLM_PROVIDER` + that provider's default
    model). Adding a provider = one adapter file + one registry entry — team files and
    the orchestrator never change. A missing key or unreachable Ollama must be reported
@@ -80,7 +81,12 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 - `server/src/app.ts` — Express app factory (`createApp({ env, teams, orchestrator })`, used by tests)
 - `teams/*.yaml` — team templates; `server/src/teams/` — zod schema, loader/registry
   (hot reload in dev), `defaultPlan.ts` (one subtask per worker along `dependsOn`)
-- `server/src/llm/` — `index.ts` picks the provider, `mock.ts`, `limiter.ts` (concurrency)
+- `server/src/llm/` — `index.ts` (the router: agent → provider + model, per-provider
+  concurrency, timeout and retries), `resolve.ts` (model resolution, pure), `providers/`
+  (`gemini`, `anthropic`, `ollama`, `openrouter` + `http.ts`), `mock.ts`, `errors.ts`
+  (`LLMError`: "provider · model: reason", retryable or not), `retry.ts` (backoff),
+  `planSchema.ts` (structured plan output), `preflight.ts` (startup check: keys, Ollama
+  running, model pulled → unavailable agents), `limiter.ts`
 - `server/src/orchestrator/orchestrator.ts` — task/subtask state machine, scheduling,
   revisions, merge, cancel, timeouts, event publishing
 - `server/src/orchestrator/prompts.ts` — plan / work / revision / merge prompts;
@@ -161,7 +167,7 @@ the current phase is finished, never mid-phase.
 - [x] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
 - [x] Phase 1c-3 — flying envelopes, full status bubbles, camera controls + focus, reduced motion, perf
 - [x] Phase 1c-4 — office life: motion setting, personalities, conversations, idle behaviours, work breaks, lounge/printer/whiteboard/water cooler
-- [ ] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
+- [x] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
 - [ ] Phase 2b — model labels on desks/reports, per-report tokens + duration, mixed-team README example
 - [ ] Polish — see the list at the end of `docs/PLAN.md`
 - [ ] Phase 3 — README, CI, third config-only template, optional plan approval, deploy

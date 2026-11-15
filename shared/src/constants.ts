@@ -12,4 +12,5 @@ export const MAX_WORKERS = 5;
  */
 export const PERSONALITIES = ['social', 'diligent', 'coffee', 'calm', 'curious'] as const;
 
-export const LLM_PROVIDERS = ['mock', 'gemini', 'anthropic'] as const;
+/** Model backends. `mock` needs nothing; the others are chosen per agent or in `.env`. */
+export const LLM_PROVIDERS = ['mock', 'gemini', 'anthropic', 'ollama', 'openrouter'] as const;

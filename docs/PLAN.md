@@ -275,7 +275,47 @@ Multi-provider support is one of the project's headline features: a single team 
 mix models from different providers ("mixed team"), chosen per agent in YAML.
 Split into two sub-phases, each ending with a stop and a summary.
 
-### 2a — Provider layer and per-agent models
+### 2a — Provider layer and per-agent models ✅
+
+Done as planned, with these decisions made along the way:
+
+- **Models (checked live in November 2026):** the default is `gemini-3.6-flash`
+  (stable, works on the free tier, about 2 s for a short answer, about 30 s for a full
+  plan). `gemini-3.8-flash` is listed as stable but never answered on the free-tier key
+  in testing; `gemini-2.5-flash` is deprecated (rerouted on 1 Dec 2026). Anthropic:
+  `claude-haiku-5-5`. Ollama default: `qwen3.5:9b`. OpenRouter default: `openrouter/auto`
+- **SDK versions** pinned exactly and at least two weeks old: `@google/genai@2.32.0`,
+  `@anthropic-ai/sdk@1.3.0`
+- **The router** (`llm/index.ts`) implements the same `LLMProvider` interface, so the
+  orchestrator didn't change apart from its safety-net timeout. It resolves the agent of
+  each call (worker for work, coordinator for plan and merge), creates adapters lazily,
+  and gives each provider its own limiter and timeout. Retries (`LLM_RETRIES`, default 2)
+  use exponential backoff and honour `Retry-After`; the limiter slot stays taken while
+  backing off, so a rate limit really slows the team down
+- **Errors** are `LLMError`s whose message starts with `provider · model:` and says what
+  went wrong in plain words (key rejected, model not found / not pulled, rate limit,
+  Ollama not running, no answer within N s); that text shows on the failed report
+- **Structured plans:** Gemini `responseJsonSchema`, Ollama `format`, OpenRouter
+  `response_format: json_schema` (asked again without it when a model refuses), Anthropic
+  a forced `submit_plan` tool whose input is returned as JSON. The plan parser is
+  unchanged and still the safety net
+- **Thinking:** Gemini 3.x gets `thinkingLevel: LOW` (2.x a 512-token budget) and 2048
+  tokens of headroom, because thinking counts against the output limit. Ollama runs with
+  `think: false` (asked again without the flag for models that have no thinking mode)
+- **Preflight** checks keys and Ollama (`/api/tags`, model pulled; untagged names match
+  `:latest`) without spending tokens on cloud calls. It runs at startup, after every
+  team reload, and every 30 s while something is missing, so starting Ollama later needs
+  no restart. Missing keys no longer stop the server
+- **Unavailable teams:** `/api/teams` adds `unavailable: reason` to affected agents;
+  `POST /tasks` answers `409 team_unavailable` naming them; the picker marks the team
+  "(unavailable)" and the task bar lists who and why, with "Check again"
+- **Mixed team example:** Maker Lesson Studio's Quinn (Test & QA) runs on
+  `ollama / qwen3.5:9b`; everyone else on the default. A full task ran end to end in
+  about 100 s (Quinn's report about 30–60 s on an RX 9060 XT)
+- Remaining for 2b: resolved model labels on desks and reports, duration per report,
+  task totals, README provider table and mixed-team guide
+
+- Original plan for this sub-phase:
 
 - **Providers:** `mock`, `gemini` (`@google/genai`), `anthropic` (`@anthropic-ai/sdk`),
   `ollama` (local HTTP API, `OLLAMA_BASE_URL` default `http://localhost:11434`, no key),

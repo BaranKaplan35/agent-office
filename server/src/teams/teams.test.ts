@@ -48,7 +48,7 @@ describe('teams/ directory', () => {
 
   it('public teams never expose system prompts or mock data', async () => {
     const { teams } = await loadTeamsFromDir(TEAMS_DIR);
-    const json = JSON.stringify(teams.map(toPublicTeam));
+    const json = JSON.stringify(teams.map((t) => toPublicTeam(t)));
     expect(json).not.toContain('systemPrompt');
     expect(json).not.toContain('mockResponse');
   });
@@ -72,6 +72,18 @@ describe('team schema', () => {
 
     (raw.agents[1] as Record<string, unknown>).personality = 'grumpy';
     expect(errorOf(raw)).toMatch(/personality/);
+  });
+
+  it('accepts an optional llm per agent (model optional) and rejects unknown providers', () => {
+    const raw = valid();
+    (raw.agents[1] as Record<string, unknown>).llm = { provider: 'ollama', model: 'qwen3.5:9b' };
+    (raw.agents[2] as Record<string, unknown>).llm = { provider: 'gemini' };
+    const ok = validateTeam(raw);
+    expect(ok.ok && ok.team.agents[1]?.llm).toEqual({ provider: 'ollama', model: 'qwen3.5:9b' });
+    expect(ok.ok && ok.team.agents[2]?.llm).toEqual({ provider: 'gemini' });
+
+    (raw.agents[1] as Record<string, unknown>).llm = { provider: 'openai', model: 'x' };
+    expect(errorOf(raw)).toMatch(/llm/);
   });
 
   it('requires exactly one coordinator', () => {

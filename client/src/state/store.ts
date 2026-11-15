@@ -30,6 +30,8 @@ export interface AppState {
   error: AppError | null;
 
   loadTeams: () => Promise<void>;
+  /** Fetch the teams again (e.g. after Ollama was started); keeps the current selection. */
+  refreshTeams: () => Promise<void>;
   selectTeam: (teamId: string) => void;
   startTask: (prompt: string, lang: Lang) => Promise<boolean>;
   newTask: () => void;
@@ -141,6 +143,17 @@ export const useApp = create<AppState>()((set, get) => {
         }
       } catch (err) {
         set({ teamsState: 'error', error: toAppError(err) });
+      }
+    },
+
+    refreshTeams: async () => {
+      set({ pending: 'teams' });
+      try {
+        set({ teams: await api.teams() });
+      } catch (err) {
+        set({ error: toAppError(err) });
+      } finally {
+        set({ pending: null });
       }
     },
 

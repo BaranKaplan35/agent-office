@@ -1,4 +1,10 @@
-import { MAX_WORKERS, MIN_WORKERS, PERSONALITIES, type TeamConfig } from '@agent-office/shared';
+import {
+  LLM_PROVIDERS,
+  MAX_WORKERS,
+  MIN_WORKERS,
+  PERSONALITIES,
+  type TeamConfig,
+} from '@agent-office/shared';
 import { z } from 'zod';
 import { findCycle } from '../lib/graph';
 
@@ -23,6 +29,13 @@ const AgentSchema = z.strictObject({
   dependsOn: z.array(IdSchema).default([]),
   mockResponse: z.string().optional(),
   personality: z.enum(PERSONALITIES).optional(),
+  /** Run this agent on its own model, e.g. `{ provider: ollama, model: qwen3.5:9b }`. */
+  llm: z
+    .strictObject({
+      provider: z.enum(LLM_PROVIDERS),
+      model: z.string().trim().min(1).optional(),
+    })
+    .optional(),
 });
 
 const DEFAULT_SETTINGS = { maxRevisions: 3, maxOutputTokens: 2048 };

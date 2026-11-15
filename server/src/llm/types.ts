@@ -39,6 +39,8 @@ export type LLMCallMeta =
     };
 
 export interface LLMRequest {
+  /** The model to use; the router fills it in from the agent (see `resolve.ts`). */
+  model?: string;
   system: string;
   messages: ChatMessage[];
   maxOutputTokens: number;
