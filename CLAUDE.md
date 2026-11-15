@@ -95,12 +95,20 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
   forgot (restart) with a message
 - `client/src/panels/` — review queue, report viewer (versions, approve, revise, export),
   message log, task input · `client/src/office/TeamBoard.tsx` — flat hub-and-spoke board
-  (WebGL fallback once the 3D office exists)
+  (the WebGL / scene-error fallback)
 - Heavy UI pieces load lazily: `LucideIcon.tsx` (icon map), `MarkdownRenderer.tsx`
 - `client/src/office/` — 3D office (phase 1c):
-  `OfficeStage.tsx` (lazy load, WebGL fallback, quality), `scene/` (canvas, camera,
-  lighting, `daylight.ts`), `models/` (procedural props), `characters/` (rig, poses,
-  `activities.ts`), `navigation/` (grid + A*), `layout.ts` (hub-and-spoke, 3–6 agents)
+  - `OfficeStage.tsx` — lazy-loads the scene, falls back to `TeamBoard` without WebGL
+    or on a scene error; `quality.ts` — Auto / High / Low store (+ `components/QualityMenu.tsx`)
+  - `layout.ts` — hub-and-spoke positions for 3–6 agents (pure, tested)
+  - `scene/` — `OfficeScene.tsx` (Canvas; default export, lazy), `daylight.ts` (hour →
+    light, pure, tested), `camera.ts` (iso fit, pure, tested), `Lighting.tsx`,
+    `CameraRig.tsx`, `Station.tsx` (desk + selection ring), `DeskTag.tsx` +
+    `TagProjector.tsx` (DOM name tags glued to 3D points), `palette.ts` (CSS tokens →
+    scene colours), `useSceneHour.ts` (`?hour=` override)
+  - `models/` — procedural props: `Room`, `Furniture`, `Decor`, `Outside`, `parts` (primitives)
+  - 1c-2 adds `characters/` (rig, poses, `activities.ts`) and `navigation/` (grid + A*)
+  - Scene components never read React context: the stage passes translated text as props
 - `client/src/styles/tokens.css` — "Daylight Studio" colour tokens (light + dark)
 
 ## API (all JSON, prefix `/api`)
@@ -131,9 +139,9 @@ the current phase is finished, never mid-phase.
 - [x] Phase 0 — skeleton, tooling, shared types, palette, empty layout, i18n, health endpoint
 - [x] Phase 1a — team loader + schema, mock provider, orchestrator, REST + SSE
 - [x] Phase 1b — team picker, task input, review queue, report viewer, final output, export
-- [ ] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
+- [x] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
 - [ ] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
-- [ ] Phase 1c-3 — flying envelopes, Html status bubbles, camera controls + focus, reduced motion, perf
+- [ ] Phase 1c-3 — flying envelopes, full status bubbles, camera controls + focus, reduced motion, perf
 - [ ] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
 - [ ] Phase 2b — model labels on desks/reports, per-report tokens + duration, mixed-team README example
 - [ ] Polish — see the list at the end of `docs/PLAN.md`

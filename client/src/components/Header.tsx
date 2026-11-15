@@ -3,6 +3,7 @@ import { useServerStatus } from '../api/useServerStatus';
 import { useI18n } from '../i18n/context';
 import { isTaskActive } from '../state/selectors';
 import { useApp } from '../state/store';
+import { QualityMenu } from './QualityMenu';
 
 function BrandMark() {
   return (
@@ -83,6 +84,8 @@ export function Header() {
           <span className="status-dot" aria-hidden="true" />
           {statusText}
         </span>
+
+        <QualityMenu />
 
         <div className="segmented" role="group" aria-label={t('header.language')}>
           {LANGS.map((code) => (

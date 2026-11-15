@@ -38,7 +38,27 @@ it must not copy other "AI office" projects.
 
 Split into three sub-phases, each ending with a stop and a summary.
 
-### 1c-1 — Room, light and layout
+### 1c-1 — Room, light and layout ✅
+
+Done as planned, with these decisions made along the way:
+
+- Soft shadows use `PCFShadowMap` + `shadow.radius` (three 0.187 removed
+  `PCFSoftShadowMap`). No contact-shadow pass: the sun's real shadows through the
+  window openings plus the lamp light ground the furniture
+- The room is a closed shadow box: invisible, shadow-only walls and ceiling close
+  the open sides, so sunlight only enters through the windows (real window-shaped
+  light patches and mullion shadows on the floor)
+- Three.js lights are physically based, so the ambient parts are scaled up in
+  `Lighting.tsx` (`HEMISPHERE_SCALE`); tone mapping is Khronos Neutral (keeps the
+  theme colours true). Dark theme uses its own lifted `--scene-*` tokens
+- Name tags are ordinary DOM buttons positioned every frame by `TagProjector`, not
+  drei `<Html>` (it renders in a separate React root, which breaks under React 19
+  and can't use app context). They are real, keyboard-focusable buttons with a
+  status dot; the status text expands on hover / focus / selection
+- Monitors already show the agent's status colour and static text lines; the lines
+  start scrolling in 1c-2
+- Outside the windows: a sky gradient with sun / moon / stars and a small garden
+- Original plan for this sub-phase:
 
 - Lazy-loaded scene chunk (`React.lazy`) so panels render instantly; WebGL-missing
   fallback that keeps the whole workflow usable from the panels
@@ -85,8 +105,9 @@ Split into three sub-phases, each ending with a stop and a summary.
 - **Envelope:** on each `assignment` message a glowing envelope flies from the hub
   desk to the worker's desk on a curved path (quadratic Bézier with an arc),
   emissive material + additive glow sprite; landing triggers the walk-to-desk
-- **Status bubbles** as drei `<Html>` above each desk: name, role and status chip
-  (Working… / ! / ✎ / ✓ / error), all text through `t()`
+- **Status bubbles:** upgrade the 1c-1 `DeskTag` (DOM, positioned by `TagProjector`)
+  into the full bubble: role, richer status (Working… / ! / ✎ / ✓ / error), a small
+  entrance animation, all text through `t()`
 - **Camera:** drei `CameraControls` — rotate and zoom within limits (azimuth
   ±35° around the default, polar 40–65°, zoom 0.7–2.5, no free pan); click a desk or
   character → smooth transition to that desk and open its report in the side panel;

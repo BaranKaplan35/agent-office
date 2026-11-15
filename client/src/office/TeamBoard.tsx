@@ -6,12 +6,12 @@ import { useI18n } from '../i18n/context';
 import {
   activityTone,
   agentActivity,
-  progress,
   sameSelection,
   selectionForAgent,
   type Selection,
 } from '../state/selectors';
 import { useApp } from '../state/store';
+import { TaskHeader } from './TaskHeader';
 
 interface DeskProps {
   agent: PublicAgent;
@@ -68,8 +68,7 @@ function Desk({ agent, task, lang, hub, selected, onOpen }: DeskProps) {
 
 /**
  * Flat, accessible view of the office: the coordinator's hub desk with the team
- * around it. It is the whole office until phase 1c and stays as the fallback
- * when WebGL is unavailable.
+ * around it. It is the fallback when WebGL is unavailable or the 3D scene fails.
  */
 export function TeamBoard({ team }: { team: PublicTeam }) {
   const { t, lang } = useI18n();
@@ -79,32 +78,10 @@ export function TeamBoard({ team }: { team: PublicTeam }) {
 
   const coordinator = team.agents.find((a) => a.type === 'coordinator');
   const workers = team.agents.filter((a) => a.type === 'worker');
-  const { approved, total } = progress(task);
 
   return (
     <div className="board">
-      {task ? (
-        <div className="board-head">
-          <div className="board-task">
-            <span className={`task-status status-${task.status}`}>
-              {t(`taskStatus.${task.status}`)}
-            </span>
-            <span className="board-prompt" title={task.prompt}>
-              {task.prompt}
-            </span>
-          </div>
-          {total > 0 && (
-            <div className="progress" aria-label={t('office.progress', { approved, total })}>
-              <div className="progress-bar">
-                <span style={{ width: `${(approved / total) * 100}%` }} />
-              </div>
-              <span className="progress-text">{t('office.progress', { approved, total })}</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className="board-hint">{t('office.idleHint')}</p>
-      )}
+      {task ? <TaskHeader /> : <p className="board-hint">{t('office.idleHint')}</p>}
 
       {coordinator && (
         <div className="board-hub">

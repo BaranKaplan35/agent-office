@@ -26,6 +26,21 @@
   --wall: #d7cfc2;
   --wall-shade: #cbc2b3;
 
+  /* 3D office materials (see client/src/office/scene/palette.ts) */
+  --scene-floor-a: #e9e3d8;
+  --scene-floor-b: #e2dacc;
+  --scene-wall: #d7cfc2;
+  --scene-wall-shade: #cbc2b3;
+  --scene-wood: #c99a6b;
+  --scene-wood-dark: #a77a52;
+  --scene-leaf: #4f9a62;
+  --scene-leaf-dark: #3a7a4d;
+  --scene-metal: #aab2bd;
+  --scene-fabric: #8f9bb3;
+  --scene-rug: #e8c9a8;
+  --scene-glass: #bfe3ff;
+  --scene-lamp: #ffd9a0;
+
   /* Agent status colours */
   --status-working: var(--primary);
   --status-review: var(--accent);
@@ -67,6 +82,20 @@
     --wall: #2a303a;
     --wall-shade: #242932;
 
+    --scene-floor-a: #5b6070;
+    --scene-floor-b: #535868;
+    --scene-wall: #747b8d;
+    --scene-wall-shade: #626879;
+    --scene-wood: #a47f5a;
+    --scene-wood-dark: #85654a;
+    --scene-leaf: #4f9d66;
+    --scene-leaf-dark: #3b7f50;
+    --scene-metal: #8e96a4;
+    --scene-fabric: #6f7b9a;
+    --scene-rug: #86705b;
+    --scene-glass: #8fb4d8;
+    --scene-lamp: #ffd9a0;
+
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
     color-scheme: dark;
   }
@@ -94,6 +123,20 @@
   --floor-b: #1f242c;
   --wall: #2a303a;
   --wall-shade: #242932;
+
+  --scene-floor-a: #5b6070;
+  --scene-floor-b: #535868;
+  --scene-wall: #747b8d;
+  --scene-wall-shade: #626879;
+  --scene-wood: #a47f5a;
+  --scene-wood-dark: #85654a;
+  --scene-leaf: #4f9d66;
+  --scene-leaf-dark: #3b7f50;
+  --scene-metal: #8e96a4;
+  --scene-fabric: #6f7b9a;
+  --scene-rug: #86705b;
+  --scene-glass: #8fb4d8;
+  --scene-lamp: #ffd9a0;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
   color-scheme: dark;
