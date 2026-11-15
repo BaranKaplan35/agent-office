@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildWorkRequest } from '../orchestrator/prompts';
 import { testTeam } from '../test/fixtures';
 import { createLimiter } from './limiter';
-import { createMockProvider } from './mock';
+import { createMockProvider, needsWalkIn } from './mock';
 
 const team = testTeam();
 const agentA = team.agents[1]!;
@@ -69,5 +69,19 @@ describe('mock provider', () => {
     const pending = slow.generate({ ...request('en'), signal: controller.signal });
     controller.abort(new Error('stop'));
     await expect(pending).rejects.toThrow('stop');
+  });
+
+  it('waits the walk-in time only while the agent may still be walking to the desk', async () => {
+    expect(needsWalkIn(request('en').meta)).toBe(true);
+    expect(needsWalkIn(request('en', { note: 'x' }).meta)).toBe(false);
+
+    const walking = createMockProvider({ minDelayMs: 0, maxDelayMs: 0, walkInMs: 60 });
+    const timed = async (req: ReturnType<typeof request>) => {
+      const start = performance.now();
+      await walking.generate(req);
+      return performance.now() - start;
+    };
+    expect(await timed(request('en'))).toBeGreaterThanOrEqual(55);
+    expect(await timed(request('en', { note: 'x' }))).toBeLessThan(40);
   });
 });

@@ -99,8 +99,9 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 - Heavy UI pieces load lazily: `LucideIcon.tsx` (icon map), `MarkdownRenderer.tsx`
 - `client/src/office/` — 3D office (phase 1c):
   - `OfficeStage.tsx` — lazy-loads the scene, falls back to `TeamBoard` without WebGL
-    or on a scene error; owns "Reset view" + Esc; `quality.ts` — Auto / High / Low store
-    (+ `components/QualityMenu.tsx`); `motion.ts` — reduced motion (`?motion=reduce|full`)
+    or on a scene error; owns "Reset view" + Esc; `quality.ts` — Auto / High / Low store,
+    `motion.ts` — System / Full / Reduced store (`?motion=reduce|full` overrides); both in
+    `components/QualityMenu.tsx` ("Office settings")
   - `layout.ts` — hub-and-spoke positions for 3–6 agents (pure, tested)
   - `scene/` — `OfficeScene.tsx` (Canvas; default export, lazy), `daylight.ts` (hour →
     light, pure, tested), `camera.ts` (iso fit, orbit limits, focus, pure, tested),
@@ -110,14 +111,18 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
     scene colours), `useSceneHour.ts` (`?hour=` override), `PerfProbe.tsx` (`?perf`)
   - `effects/` — `flights.ts` (assignment messages → envelope flights, pure, tested),
     `Envelopes.tsx` (pooled renderer)
-  - `models/` — procedural props: `Room`, `Furniture`, `Decor`, `Outside`, `parts` (primitives);
+  - `models/` — procedural props: `Room`, `Furniture`, `Decor`, `Lounge` (lounge, printer,
+    water cooler, whiteboard), `Outside`, `parts` (primitives);
     `batch.ts` + `StaticBatch.tsx` merge static meshes per material — mark anything that
     changes on its own with `userData={{ dynamic: true }}`
-  - `characters/` — `brain.ts` (behaviour state machine, pure), `pose.ts` (joint angles,
-    pure), `activities.ts` (activity → goal), `appearance.ts`, `spotRegistry.ts`;
+  - `characters/` — `brain.ts` (behaviour state machine: desk, breaks, lounge seats,
+    meetings; pure), `pose.ts` (joint angles, held items; pure), `activities.ts` (activity →
+    goal), `personality.ts` (personality → temperament), `social.ts` (chats, high-fives,
+    speech bubbles; pure), `appearance.ts`, `spotRegistry.ts` (weighted spots);
     `Character.tsx` (rig, applies poses), `Confetti.tsx`
-  - `navigation/` — `grid.ts` (A\* + line-of-sight), `office.ts` (obstacles, seats, idle and
-    celebration spots); `props.ts` — fixed furniture placements shared by scene and navigation
+  - `navigation/` — `grid.ts` (A\* + line-of-sight), `office.ts` (obstacles, seats, idle,
+    meeting and celebration spots); `props.ts` — fixed furniture and lamp placements shared by
+    scene and navigation (`props.test.ts`: lamps never cross a desk bubble)
   - `scene/Cast.tsx` — one brain per agent, sets goals from `agentActivity` every frame
     (held while the agent's envelope is in flight; `calmGoalFor` + `settle()` under
     reduced motion); characters never read React context and never decide anything themselves
@@ -142,7 +147,7 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 
 ## Working agreement
 
-Work proceeds phase by phase (1c in three sub-phases, 2 in two). At the end of each phase
+Work proceeds phase by phase (1c in four sub-phases, 2 in two). At the end of each phase
 or sub-phase: stop, summarise simply what was done, and wait for the go-ahead before
 starting the next one. Plan changes are applied to `docs/PLAN.md` and this file once
 the current phase is finished, never mid-phase.
@@ -155,6 +160,7 @@ the current phase is finished, never mid-phase.
 - [x] Phase 1c-1 — 3D room, hub-and-spoke layout, soft shadows, real-time daylight, quality setting
 - [x] Phase 1c-2 — low-poly characters, procedural animation, activity mapping, navigation
 - [x] Phase 1c-3 — flying envelopes, full status bubbles, camera controls + focus, reduced motion, perf
+- [x] Phase 1c-4 — office life: motion setting, personalities, conversations, idle behaviours, work breaks, lounge/printer/whiteboard/water cooler
 - [ ] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
 - [ ] Phase 2b — model labels on desks/reports, per-report tokens + duration, mixed-team README example
 - [ ] Polish — see the list at the end of `docs/PLAN.md`

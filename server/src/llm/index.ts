@@ -16,6 +16,7 @@ export function createLLMProvider(env: Env): LLMProvider {
       provider = createMockProvider({
         minDelayMs: env.MOCK_MIN_DELAY_MS,
         maxDelayMs: env.MOCK_MAX_DELAY_MS,
+        walkInMs: env.MOCK_WALK_IN_MS,
       });
       break;
     case 'gemini':

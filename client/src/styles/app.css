@@ -1386,6 +1386,61 @@ button.queue-item:hover {
   }
 }
 
+/* Speech bubbles above the characters: emoji or "…", placed every frame by the cast */
+.speech-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.speech {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  will-change: transform;
+}
+.speech::before {
+  content: attr(data-text);
+  position: absolute;
+  bottom: 9px;
+  left: 0;
+  translate: -50% 0;
+  min-width: 30px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-bottom: 2px solid var(--agent);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+/* a little tail pointing at the head */
+.speech::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--agent);
+  border-bottom: 0;
+}
+.speech.is-new::before {
+  animation: bubble-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: 50% 100%;
+}
+@media (max-width: 520px) {
+  .speech::before {
+    font-size: 13px;
+    padding: 2px 7px;
+  }
+}
+
 /* "Reset view" under the task header */
 .office-view-reset {
   display: inline-flex;
@@ -1451,6 +1506,11 @@ button.queue-item:hover {
 }
 .menu-panel h3 {
   margin-bottom: 6px;
+}
+.menu-panel .menu-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
 }
 .radio-row {
   display: flex;

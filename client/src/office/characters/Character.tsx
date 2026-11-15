@@ -7,7 +7,14 @@ import { mixHex } from '../scene/daylight';
 import type { Appearance } from './appearance';
 import type { CharacterBrain } from './brain';
 import { DIM } from './dimensions';
-import { computePose, NEUTRAL_POSE, smoothPose, type Pose, type PoseContext } from './pose';
+import {
+  computePose,
+  NEUTRAL_POSE,
+  smoothPose,
+  type Held,
+  type Pose,
+  type PoseContext,
+} from './pose';
 
 const INK = '#1b1f27';
 const MOUTH = '#5a1f2a';
@@ -160,6 +167,56 @@ function Accessory({ kind, color }: { kind: Appearance['accessory']; color: stri
   }
 }
 
+/** Things a character can hold in its right hand; only the current one is shown. */
+function HandProps({
+  accent,
+  register,
+}: {
+  accent: string;
+  register: (item: Held, node: Group | null) => void;
+}) {
+  const at: [number, number, number] = [0, -DIM.armFore, 0.08];
+  const ref = (item: Held) => (node: Group | null) => register(item, node);
+  return (
+    <group position={at}>
+      <group ref={ref('mug')} visible={false}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.045, 0.04, 0.09, 10]} />
+          <meshStandardMaterial color={accent} roughness={0.5} />
+        </mesh>
+        <mesh position={[0.055, 0, 0]} castShadow>
+          <boxGeometry args={[0.03, 0.05, 0.015]} />
+          <meshStandardMaterial color={accent} roughness={0.5} />
+        </mesh>
+      </group>
+      <group ref={ref('cup')} visible={false}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.035, 0.028, 0.08, 10]} />
+          <meshStandardMaterial color="#f4f1ea" roughness={0.6} />
+        </mesh>
+      </group>
+      <group ref={ref('phone')} visible={false} position={[0, 0.02, -0.04]}>
+        <mesh rotation={[0.2, 0, 0]} castShadow>
+          <boxGeometry args={[0.055, 0.11, 0.012]} />
+          <meshStandardMaterial color={INK} roughness={0.35} />
+        </mesh>
+      </group>
+      <group ref={ref('paper')} visible={false} position={[0, -0.02, 0.04]}>
+        <mesh rotation={[-1.1, 0, 0]} castShadow>
+          <boxGeometry args={[0.16, 0.21, 0.004]} />
+          <meshStandardMaterial color="#fbfaf6" roughness={0.9} />
+        </mesh>
+      </group>
+      <group ref={ref('marker')} visible={false}>
+        <mesh rotation={[1.2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.012, 0.012, 0.11, 8]} />
+          <meshStandardMaterial color={accent} roughness={0.5} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 interface Rig {
   root: Group | null;
   body: Group | null;
@@ -176,7 +233,8 @@ interface Rig {
   eyeR: Mesh | null;
   smile: Mesh | null;
   openMouth: Mesh | null;
-  mug: Group | null;
+  /** Props for the right hand, one group per item. */
+  held: Partial<Record<Held, Group | null>>;
 }
 
 const EMPTY_RIG: Rig = {
@@ -195,7 +253,7 @@ const EMPTY_RIG: Rig = {
   eyeR: null,
   smile: null,
   openMouth: null,
-  mug: null,
+  held: {},
 };
 
 interface Props {
@@ -223,6 +281,9 @@ export function Character({ brain, look, ctx, onOpen, accent }: Props) {
     (node: Rig[K]) => {
       rig.current[key] = node;
     };
+  const registerHeld = (item: Held, node: Group | null) => {
+    rig.current.held[item] = node;
+  };
 
   useFrame(({ clock }, delta) => {
     const r = rig.current;
@@ -234,7 +295,7 @@ export function Character({ brain, look, ctx, onOpen, accent }: Props) {
     r.root.position.set(snap.x, 0, snap.z);
     r.root.rotation.y = snap.heading;
     r.body.position.y = DIM.hipY + p.bodyY;
-    r.body.rotation.set(p.bodyPitch, 0, p.bodyRoll);
+    r.body.rotation.set(p.bodyPitch, p.bodyYaw, p.bodyRoll);
     r.head.rotation.set(p.headPitch, p.headYaw, p.headRoll);
 
     r.armL?.rotation.set(-p.armLX, 0, p.armLZ);
@@ -258,7 +319,9 @@ export function Character({ brain, look, ctx, onOpen, accent }: Props) {
       r.smile.visible = !open;
       r.smile.scale.y = Math.abs(p.smile) < 0.05 ? 0.05 : p.smile;
     }
-    if (r.mug) r.mug.visible = p.mug;
+    for (const [item, node] of Object.entries(r.held)) {
+      if (node) node.visible = item === p.held;
+    }
   });
 
   const handlers = onOpen
@@ -366,23 +429,15 @@ export function Character({ brain, look, ctx, onOpen, accent }: Props) {
           >
             <Limb radius={0.06} length={DIM.armUpper} color={look.outfit} />
             <group ref={set(side === 1 ? 'foreL' : 'foreR')} position={[0, -DIM.armUpper, 0]}>
-              <Limb radius={0.05} length={DIM.armFore} color={look.skin} />
-              <mesh position={[0, -DIM.armFore, 0]} castShadow>
-                <icosahedronGeometry args={[0.058, 1]} />
-                <meshStandardMaterial color={look.skin} roughness={0.8} flatShading />
-              </mesh>
-              {side === -1 && (
-                <group ref={set('mug')} position={[0, -DIM.armFore, 0.08]} visible={false}>
-                  <mesh castShadow>
-                    <cylinderGeometry args={[0.045, 0.04, 0.09, 10]} />
-                    <meshStandardMaterial color={accent} roughness={0.5} />
-                  </mesh>
-                  <mesh position={[0.055, 0, 0]} castShadow>
-                    <boxGeometry args={[0.03, 0.05, 0.015]} />
-                    <meshStandardMaterial color={accent} roughness={0.5} />
-                  </mesh>
-                </group>
-              )}
+              {/* forearm and hand share a material: one mesh */}
+              <StaticBatch version={batchVersion}>
+                <Limb radius={0.05} length={DIM.armFore} color={look.skin} />
+                <mesh position={[0, -DIM.armFore, 0]} castShadow>
+                  <icosahedronGeometry args={[0.058, 1]} />
+                  <meshStandardMaterial color={look.skin} roughness={0.75} />
+                </mesh>
+              </StaticBatch>
+              {side === -1 && <HandProps accent={accent} register={registerHeld} />}
             </group>
           </group>
         ))}

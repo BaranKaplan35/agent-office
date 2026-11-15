@@ -35,6 +35,17 @@ const ACTIONS: ActionName[] = [
   'stretch',
   'browse',
   'celebrate',
+  'phone',
+  'water',
+  'printer',
+  'whiteboard',
+  'visit',
+  'chat',
+  'highfive',
+  'leanBack',
+  'scratch',
+  'ask',
+  'lounge',
 ];
 
 describe('computePose', () => {
@@ -125,7 +136,7 @@ describe('computePose', () => {
   it('holds a mug while drinking coffee, and lifts it to the mouth now and then', () => {
     const pose = (actionTime: number) =>
       computePose(input({ action: 'coffee', actionTime }), 1, ctx);
-    expect(pose(1).mug).toBe(true);
+    expect(pose(1).held).toBe('mug');
     expect(pose(3.6).armRX).toBeGreaterThan(pose(0.5).armRX + 0.5);
   });
 
@@ -149,7 +160,7 @@ describe('computePose', () => {
 describe('pose blending', () => {
   it('lerpPose hits both ends', () => {
     const a = { ...NEUTRAL_POSE, bodyY: 0 };
-    const b = { ...NEUTRAL_POSE, bodyY: 1, mug: true };
+    const b = { ...NEUTRAL_POSE, bodyY: 1, held: 'mug' as const };
     expect(lerpPose(a, b, 0).bodyY).toBe(0);
     expect(lerpPose(a, b, 1).bodyY).toBe(1);
     expect(lerpPose(a, b, 0.25).bodyY).toBeCloseTo(0.25, 10);
@@ -194,5 +205,52 @@ describe('still poses (reduced motion)', () => {
     );
     expect(p.armRX).toBeGreaterThan(2.5);
     expect(p.eyeOpen).toBe(1);
+  });
+});
+
+describe('office life poses', () => {
+  const seated = (action: 'leanBack' | 'scratch' | 'ask' | 'lounge', actionTime: number) =>
+    computePose(input({ sitBlend: 1, seatAction: action, action, actionTime }), 1, {
+      ...ctx,
+      askYaw: 1,
+    });
+
+  it('talks with hands and mouth while speaking, nods and folds arms while listening', () => {
+    const speak = (t: number) => computePose(input({ action: 'chat', speaking: true }), t, ctx);
+    const listen = computePose(input({ action: 'chat', speaking: false }), 1, ctx);
+    const mouths = Array.from({ length: 40 }, (_, i) => speak(i * 0.05).mouth);
+    expect(Math.max(...mouths)).toBeGreaterThan(0.25);
+    expect(listen.mouth).toBe(0);
+    expect(listen.foreL).toBeGreaterThan(1.5);
+  });
+
+  it('high-fives with both hands up, then lowers them', () => {
+    const at = (actionTime: number) =>
+      computePose(input({ action: 'highfive', actionTime }), 1, ctx);
+    expect(at(0.5).armRX).toBeGreaterThan(2.2);
+    expect(at(0.5).armLX).toBeGreaterThan(2.2);
+    expect(at(2.2).armRX).toBeLessThan(0.3);
+  });
+
+  it('holds the right thing in its hand', () => {
+    const held = (action: ActionName, actionTime = 1) =>
+      computePose(input({ action, actionTime }), 1, ctx).held;
+    expect(held('phone')).toBe('phone');
+    expect(held('water')).toBe('cup');
+    expect(held('whiteboard')).toBe('marker');
+    expect(held('printer', 1)).toBe('none');
+    expect(held('printer', 4)).toBe('paper');
+    expect(held('stand')).toBe('none');
+  });
+
+  it('leans back with hands behind the head, scratches, turns to ask, lounges', () => {
+    expect(seated('leanBack', 1.2).bodyPitch).toBeLessThan(-0.2);
+    expect(seated('leanBack', 1.2).armRX).toBeGreaterThan(2.5);
+    expect(seated('scratch', 0.9).armRX).toBeGreaterThan(2);
+    expect(seated('ask', 1.2).headYaw).toBeGreaterThan(0.5);
+    expect(seated('ask', 1.2).bodyYaw).toBeGreaterThan(0.2);
+    expect(seated('lounge', 1).bodyPitch).toBeLessThan(-0.15);
+    // every break eases back to the working pose
+    expect(seated('leanBack', 2.6).bodyPitch).toBeCloseTo(0.08, 1);
   });
 });

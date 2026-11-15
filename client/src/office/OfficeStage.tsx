@@ -2,11 +2,11 @@ import type { PublicTeam } from '@agent-office/shared';
 import { RotateCcw } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/context';
-import type { AgentActivity } from '../state/selectors';
 import { useApp, useCurrentTeam } from '../state/store';
 import { useReducedMotion } from './motion';
 import { OfficeErrorBoundary } from './OfficeErrorBoundary';
 import type { CameraHandle } from './scene/CameraRig';
+import type { SceneActivity } from './scene/DeskTag';
 import type { OfficeSceneProps } from './scene/OfficeScene';
 import { TaskHeader } from './TaskHeader';
 import { TeamBoard } from './TeamBoard';
@@ -88,7 +88,7 @@ function Office3D({ team }: { team: PublicTeam }) {
   const texts = useMemo<OfficeSceneProps['texts']>(
     () => ({
       canvas: t('office.canvasLabel'),
-      status: (activity: AgentActivity) => t(`activity.${activity}`),
+      status: (activity: SceneActivity) => t(`activity.${activity}`),
       open: (name: string) => t('office.openReport', { name }),
     }),
     [t],

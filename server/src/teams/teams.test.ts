@@ -64,6 +64,16 @@ describe('team schema', () => {
     }
   });
 
+  it('accepts an optional personality and rejects unknown ones', () => {
+    const raw = valid();
+    (raw.agents[1] as Record<string, unknown>).personality = 'coffee';
+    const ok = validateTeam(raw);
+    expect(ok.ok && ok.team.agents[1]?.personality).toBe('coffee');
+
+    (raw.agents[1] as Record<string, unknown>).personality = 'grumpy';
+    expect(errorOf(raw)).toMatch(/personality/);
+  });
+
   it('requires exactly one coordinator', () => {
     expect(errorOf(team([agent('a', 'worker'), agent('b', 'worker')]))).toMatch(
       /exactly one coordinator \(found 0\)/,

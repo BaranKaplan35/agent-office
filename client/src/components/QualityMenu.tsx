@@ -1,14 +1,18 @@
 import { Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/context';
+import { MOTION_SETTINGS, useMotion, useSystemReducedMotion } from '../office/motion';
 import { QUALITY_SETTINGS, useQuality } from '../office/quality';
 
-/** Gear button with a small menu to pick the graphics quality (Auto / High / Low). */
+/** Gear button with the office settings: graphics quality (Auto / High / Low) and motion. */
 export function QualityMenu() {
   const { t } = useI18n();
   const setting = useQuality((s) => s.setting);
   const autoLevel = useQuality((s) => s.autoLevel);
   const setSetting = useQuality((s) => s.setSetting);
+  const motion = useMotion((s) => s.setting);
+  const setMotion = useMotion((s) => s.setSetting);
+  const systemReduced = useSystemReducedMotion();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -39,15 +43,15 @@ export function QualityMenu() {
         className="icon-button"
         aria-haspopup="true"
         aria-expanded={open}
-        aria-label={t('quality.title')}
-        title={t('quality.title')}
+        aria-label={t('settings.title')}
+        title={t('settings.title')}
         onClick={() => setOpen((o) => !o)}
       >
         <Settings size={18} aria-hidden="true" />
       </button>
 
       {open && (
-        <div className="menu-panel" role="group" aria-label={t('quality.title')}>
+        <div className="menu-panel" role="group" aria-label={t('settings.title')}>
           <h3>{t('quality.title')}</h3>
           {QUALITY_SETTINGS.map((option) => (
             <label key={option} className="radio-row">
@@ -65,6 +69,29 @@ export function QualityMenu() {
           ))}
           {setting === 'auto' && (
             <p className="hint">{t('quality.autoNow', { level: t(`quality.${autoLevel}`) })}</p>
+          )}
+
+          <h3 className="menu-section">{t('motion.title')}</h3>
+          {MOTION_SETTINGS.map((option) => (
+            <label key={option} className="radio-row">
+              <input
+                type="radio"
+                name="motion"
+                checked={motion === option}
+                onChange={() => setMotion(option)}
+              />
+              <span>
+                <strong>{t(`motion.${option}`)}</strong>
+                <small>{t(`motion.${option}Hint`)}</small>
+              </span>
+            </label>
+          ))}
+          {motion === 'system' && (
+            <p className="hint">
+              {t('motion.systemNow', {
+                level: t(systemReduced ? 'motion.reduced' : 'motion.full'),
+              })}
+            </p>
           )}
         </div>
       )}

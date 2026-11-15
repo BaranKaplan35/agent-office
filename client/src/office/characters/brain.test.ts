@@ -90,13 +90,22 @@ describe('CharacterBrain: wandering', () => {
   it('gets up, walks to a spot and does its action', () => {
     const { brain } = brainFor('a', desk);
     brain.setGoal(free);
-    const { last } = run(brain, 30, (s) => s.phase === 'acting');
-    expect(last.phase).toBe('acting');
-    expect(last.sitBlend).toBe(0);
+    const { last } = run(
+      brain,
+      30,
+      (s) => s.phase === 'acting' || (s.phase === 'seated' && s.action === 'lounge'),
+    );
     expect(last.spotId).not.toBeNull();
-    expect(['coffee', 'window', 'browse', 'stretch']).toContain(last.action);
     const spot = idleSpots().find((s) => s.id === last.spotId)!;
-    expect(Math.hypot(last.x - spot.x, last.z - spot.z)).toBeLessThan(0.05);
+    if (spot.sit) {
+      // a sofa or the armchair: sitting on it
+      expect(last.sitBlend).toBe(1);
+      expect(Math.hypot(last.x - spot.sit.x, last.z - spot.sit.z)).toBeLessThan(0.05);
+    } else {
+      expect(last.sitBlend).toBe(0);
+      expect(last.action).toBe(spot.action);
+      expect(Math.hypot(last.x - spot.x, last.z - spot.z)).toBeLessThan(0.05);
+    }
   });
 
   it('never walks faster than its speed, and stays on free floor', () => {
@@ -162,7 +171,7 @@ describe('CharacterBrain: back to the desk', () => {
     expect(last.phase).toBe('seated');
     expect([last.x, last.z]).toEqual([seat.x, seat.z]);
     expect(last.sitBlend).toBe(1);
-    expect(last.heading).toBeCloseTo(seat.heading, 1);
+    expect(Math.cos(last.heading - seat.heading)).toBeCloseTo(1, 3);
     expect(last.action).toBe('typing');
   });
 
@@ -310,5 +319,160 @@ describe('CharacterBrain: settle (reduced motion)', () => {
     const before = brain.snapshot();
     brain.settle();
     expect(brain.snapshot()).toEqual(before);
+  });
+});
+
+describe('CharacterBrain: lounge seats', () => {
+  it('sits down on the sofa, stays a while, then gets up and wanders on', () => {
+    const shared = world();
+    const { brain } = brainFor('a', desk, shared);
+    // only lounge seats are attractive
+    (brain as unknown as { cfg: { idleWeights: object } }).cfg.idleWeights = {
+      coffee: 0,
+      window: 0,
+      browse: 0,
+      stretch: 0,
+      phone: 0,
+      water: 0,
+      printer: 0,
+      whiteboard: 0,
+      visit: 0,
+    };
+    brain.setGoal(free);
+    const sat = run(brain, 30, (s) => s.phase === 'seated' && s.action === 'lounge').last;
+    expect(sat.action).toBe('lounge');
+    expect(sat.sitBlend).toBe(1);
+    const seat = idleSpots().find((s) => s.id === sat.spotId)!;
+    expect(Math.hypot(sat.x - seat.sit!.x, sat.z - seat.sit!.z)).toBeLessThan(0.05);
+    expect(brain.canMeet()).toBe(false); // lounging: not pulled into chats
+    const up = run(brain, 30, (s) => s.phase === 'walking').last;
+    expect(up.phase).toBe('walking');
+  });
+
+  it('leaves the sofa at once when work arrives', () => {
+    const { brain, seat } = brainFor('a', desk);
+    (brain as unknown as { cfg: { idleWeights: object } }).cfg.idleWeights = {
+      coffee: 0,
+      window: 0,
+      browse: 0,
+      stretch: 0,
+      phone: 0,
+      water: 0,
+      printer: 0,
+      whiteboard: 0,
+      visit: 0,
+    };
+    brain.setGoal(free);
+    run(brain, 30, (s) => s.phase === 'seated' && s.action === 'lounge');
+    brain.setGoal(desk);
+    const { last } = run(brain, 40, (s) => s.phase === 'seated' && s.action === 'typing');
+    expect([last.x, last.z]).toEqual([seat.x, seat.z]);
+  });
+});
+
+describe('CharacterBrain: short breaks while typing', () => {
+  function worker(breakEvery: [number, number] = [2, 2], canAsk = true) {
+    const shared = world();
+    const slot = layout.desks[0]!;
+    return new CharacterBrain(
+      {
+        id: slot.agentId,
+        seat: seatFor(slot),
+        grid,
+        spots: shared.spots,
+        celebrate: celebrate.get(slot.agentId)!,
+        rand: shared.rand,
+        breakEvery,
+        canAsk,
+      },
+      desk,
+    );
+  }
+
+  it('takes a short break now and then and goes back to typing', () => {
+    const brain = worker();
+    const { frames } = run(brain, 12);
+    const actions = new Set(frames.map((f) => f.action));
+    expect([...actions].some((a) => a === 'leanBack' || a === 'scratch' || a === 'ask')).toBe(true);
+    expect(frames.at(-1)!.phase).toBe('seated');
+    // never leaves the chair for it
+    for (const f of frames) expect(f.sitBlend).toBe(1);
+    // and keeps typing most of the time
+    expect(frames.filter((f) => f.action === 'typing').length).toBeGreaterThan(frames.length / 2);
+  });
+
+  it('only asks a neighbour when there is one', () => {
+    const brain = worker([1, 1], false);
+    expect(run(brain, 30).frames.some((f) => f.action === 'ask')).toBe(false);
+  });
+
+  it('takes no breaks under reduced motion', () => {
+    const brain = worker();
+    brain.setCalm(true);
+    expect(run(brain, 12).frames.every((f) => f.action === 'typing')).toBe(true);
+  });
+});
+
+describe('CharacterBrain: meetings', () => {
+  function idle() {
+    const { brain } = brainFor('a', free);
+    run(brain, 0.2);
+    return brain;
+  }
+  const meetAt = (x: number, z: number, gesture: 'chat' | 'highfive' = 'chat') => ({
+    id: 'm1',
+    x,
+    z,
+    heading: 1,
+    gesture,
+  });
+  const spot = idleSpots().find((s) => s.action === 'stretch')!;
+
+  it('walks to the meeting place, turns to the group and chats', () => {
+    const brain = idle();
+    expect(brain.canMeet()).toBe(true);
+    expect(brain.joinMeet(meetAt(spot.x, spot.z))).toBe(true);
+    expect(brain.canMeet()).toBe(false);
+    const { last } = run(brain, 30, () => brain.atMeet());
+    expect(brain.atMeet()).toBe(true);
+    expect(last.action).toBe('chat');
+    expect(last.meetId).toBe('m1');
+    const later = run(brain, 2).last;
+    expect(Math.cos(later.heading - 1)).toBeCloseTo(1, 3);
+    // stays until the chat ends
+    expect(run(brain, 20).last.action).toBe('chat');
+  });
+
+  it('speaks only while in a meeting, and wanders on after it', () => {
+    const brain = idle();
+    brain.setSpeaking(true);
+    expect(brain.snapshot().speaking).toBe(false);
+    brain.joinMeet(meetAt(spot.x, spot.z));
+    run(brain, 30, () => brain.atMeet());
+    brain.setSpeaking(true);
+    expect(brain.snapshot().speaking).toBe(true);
+    brain.leaveMeet();
+    const s = brain.update(DT);
+    expect(s.meetId).toBeNull();
+    expect(s.speaking).toBe(false);
+    expect(s.phase).toBe('walking');
+  });
+
+  it('drops the chat when work arrives', () => {
+    const brain = idle();
+    brain.joinMeet(meetAt(spot.x, spot.z));
+    run(brain, 30, () => brain.atMeet());
+    brain.setGoal(desk);
+    const { last } = run(brain, 40, (s) => s.phase === 'seated');
+    expect(last.meetId).toBeNull();
+    expect(last.action).toBe('typing');
+  });
+
+  it('is never pulled into a chat while working or under reduced motion', () => {
+    expect(brainFor('a', desk).brain.canMeet()).toBe(false);
+    const brain = idle();
+    brain.setCalm(true);
+    expect(brain.canMeet()).toBe(false);
+    expect(brain.joinMeet(meetAt(spot.x, spot.z))).toBe(false);
   });
 });

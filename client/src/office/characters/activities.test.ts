@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentActivity } from '../../state/selectors';
-import { calmGoalFor, goalFor, NOD_SECONDS, sameGoal } from './activities';
+import { calmGoalFor, goalFor, isDeskWork, NOD_SECONDS, sameGoal } from './activities';
 
 const ALL: AgentActivity[] = [
   'idle',
@@ -69,5 +69,14 @@ describe('calmGoalFor (reduced motion)', () => {
     expect(calmGoalFor('approved')).toEqual({ kind: 'desk', pose: 'nod' });
     expect(calmGoalFor('idle')).toEqual({ kind: 'desk', pose: 'reading' });
     expect(calmGoalFor('done')).toEqual({ kind: 'celebrate' });
+  });
+});
+
+describe('isDeskWork', () => {
+  it('is true exactly for the activities that type at the desk', () => {
+    for (const activity of ALL) {
+      const goal = goalFor(activity);
+      expect(isDeskWork(activity)).toBe(goal.kind === 'desk' && goal.pose === 'typing');
+    }
   });
 });

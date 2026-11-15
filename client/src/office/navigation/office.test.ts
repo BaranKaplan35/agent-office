@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, HUB_POSITION, type AgentRef } from '../layout';
 import { findPath, isWalkable, lineOfSight, type Vec2 } from './grid';
-import { buildOfficeGrid, celebrateSpots, idleSpots, seatFor } from './office';
+import {
+  buildOfficeGrid,
+  celebrateSpots,
+  idleSpots,
+  KEEP_CLEAR,
+  meetPlaces,
+  seatFor,
+} from './office';
 
 const team = (workers: number): AgentRef[] => [
   { id: 'lead', type: 'coordinator' },
@@ -20,9 +27,54 @@ describe.each([2, 3, 4, 5])('office navigation with %i workers', (n) => {
     }
   });
 
-  it('every idle spot is free floor', () => {
-    for (const spot of idleSpots()) {
+  it('every idle spot is free floor, and no two crowd each other', () => {
+    const spots = idleSpots(layout);
+    for (const spot of spots) {
       expect(isWalkable(grid, spot), spot.id).toBe(true);
+    }
+    for (let i = 0; i < spots.length; i++) {
+      for (let j = i + 1; j < spots.length; j++) {
+        const a = spots[i]!;
+        const b = spots[j]!;
+        expect(Math.hypot(a.x - b.x, a.z - b.z), `${a.id} ↔ ${b.id}`).toBeGreaterThan(0.6);
+      }
+    }
+  });
+
+  it('idle spots stay clear of every seat and its approach', () => {
+    for (const spot of idleSpots(layout)) {
+      for (const slot of slots) {
+        const seat = seatFor(slot);
+        for (const p of [seat, seat.approach]) {
+          expect(
+            Math.hypot(p.x - spot.x, p.z - spot.z),
+            `${spot.id} vs ${slot.agentId}`,
+          ).toBeGreaterThan(0.6);
+        }
+      }
+    }
+  });
+
+  it('has places to chat: coffee corner, a window, the lounge and most desks', () => {
+    const places = meetPlaces(layout, grid);
+    const kinds = new Set(places.map((p) => p.kind));
+    for (const k of ['coffee', 'window', 'lounge', 'floor', 'cooler'] as const) {
+      expect(kinds.has(k), k).toBe(true);
+    }
+    expect(places.filter((p) => p.kind === 'desk').length).toBeGreaterThanOrEqual(Math.min(2, n));
+    for (const place of places) {
+      expect(place.slots.length).toBeGreaterThanOrEqual(2);
+      for (const slot of place.slots) {
+        expect(isWalkable(grid, slot), place.id).toBe(true);
+        // facing the middle of the group
+        const look = { x: Math.sin(slot.heading), z: Math.cos(slot.heading) };
+        const to = { x: place.center.x - slot.x, z: place.center.z - slot.z };
+        expect(look.x * to.x + look.z * to.z).toBeGreaterThan(0);
+        for (const spot of idleSpots(layout)) {
+          if (spot.id === slot.spotId) continue; // a reserved idle spot (coffee counter)
+          expect(Math.hypot(spot.x - slot.x, spot.z - slot.z)).toBeGreaterThanOrEqual(KEEP_CLEAR);
+        }
+      }
     }
   });
 
@@ -39,23 +91,30 @@ describe.each([2, 3, 4, 5])('office navigation with %i workers', (n) => {
     }
   });
 
-  it('any seat can reach any spot and any spot any seat (no closed-off areas)', () => {
+  it('every seat, spot and chat place is reachable (no closed-off areas)', () => {
     const stops: Array<[string, Vec2]> = [
       ...slots.map((s): [string, Vec2] => [`seat ${s.agentId}`, seatFor(s).approach]),
-      ...idleSpots().map((s): [string, Vec2] => [s.id, s]),
+      ...idleSpots(layout).map((s): [string, Vec2] => [s.id, s]),
       ...[...celebrateSpots(layout).entries()].map(([id, s]): [string, Vec2] => [
         `celebrate ${id}`,
         s,
       ]),
+      ...meetPlaces(layout, grid).flatMap((p) =>
+        p.slots.map((s, i): [string, Vec2] => [`${p.id}#${i}`, s]),
+      ),
     ];
-    for (const [fromName, from] of stops) {
-      for (const [toName, to] of stops) {
-        if (fromName === toName) continue;
+    // the grid is undirected: reaching everything from one stop (and back) proves it
+    const [homeName, home] = stops[0]!;
+    for (const [name, stop] of stops.slice(1)) {
+      for (const [from, to, label] of [
+        [home, stop, `${homeName} → ${name}`],
+        [stop, home, `${name} → ${homeName}`],
+      ] as const) {
         const path = findPath(grid, from, to);
-        expect(path, `${fromName} → ${toName}`).not.toBeNull();
+        expect(path, label).not.toBeNull();
         let prev = from;
         for (const p of path!) {
-          expect(lineOfSight(grid, prev, p), `${fromName} → ${toName} segment`).toBe(true);
+          expect(lineOfSight(grid, prev, p), `${label} segment`).toBe(true);
           prev = p;
         }
       }

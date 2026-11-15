@@ -1,20 +1,29 @@
 import type { Lang, PublicTeam, Task } from '@agent-office/shared';
 import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Ref,
+} from 'react';
 import {
   activityTone,
   agentActivity,
   sameSelection,
   selectionForAgent,
-  type AgentActivity,
   type Selection,
 } from '../../state/selectors';
+import { isDeskWork } from '../characters/activities';
 import { Envelopes } from '../effects/Envelopes';
 import { FlightBoard, flightsFor, MessageWatcher } from '../effects/flights';
 import { buildLayout, HUB_POSITION } from '../layout';
 import { BushPlant, PendantLamp, TallPlant, WallClock } from '../models/Decor';
 import { Bookshelf, CoffeeCorner, Rug } from '../models/Furniture';
+import { LoungeCorner, Printer, WaterCooler, Whiteboard } from '../models/Lounge';
 import { Outside } from '../models/Outside';
 import { LAMP_Y, LAMPS, PLANTS } from '../props';
 import { Room } from '../models/Room';
@@ -26,7 +35,7 @@ import { daylight } from './daylight';
 import { Lighting } from './Lighting';
 import { useScenePalette } from './palette';
 import { Cast, type CastEntry } from './Cast';
-import { DeskTag } from './DeskTag';
+import { DeskTag, type SceneActivity } from './DeskTag';
 import { Station } from './Station';
 import { TagProjector, type TagAnchor } from './TagProjector';
 import { ToneMapping } from './ToneMapping';
@@ -48,7 +57,7 @@ export interface OfficeSceneProps {
   /** All visible text is passed in already translated: the scene never reads React context. */
   texts: {
     canvas: string;
-    status: (activity: AgentActivity) => string;
+    status: (activity: SceneActivity) => string;
     open: (agentName: string) => string;
   };
 }
@@ -101,11 +110,19 @@ export default function OfficeScene({
 
   // Name tags are plain DOM; the projector keeps them glued to these 3D points.
   const tagRegistry = useRef(new Map<string, HTMLElement>());
+  // Speech bubbles (emoji above the heads) are DOM too; the cast fills and moves them.
+  const speechRegistry = useRef(new Map<string, HTMLElement>());
+
+  // Agents with work who haven't sat down yet: their desk says "on the way", and
+  // the monitor only starts scrolling once they sit.
+  const [arriving, setArriving] = useState<ReadonlySet<string>>(() => new Set());
 
   const entries = [layout.hub, ...layout.desks].flatMap((slot, index) => {
     const agent = team.agents.find((a) => a.id === slot.agentId);
     if (!agent) return [];
     const activity = agentActivity(task, agent);
+    const shown: SceneActivity =
+      arriving.has(agent.id) && isDeskWork(activity) ? 'arriving' : activity;
     const target = selectionForAgent(task, agent);
     return [
       {
@@ -113,7 +130,8 @@ export default function OfficeScene({
         agent,
         index,
         activity,
-        tone: activityTone(activity),
+        shown,
+        tone: shown === 'arriving' ? ('muted' as const) : activityTone(activity),
         target,
         selected: !!target && sameSelection(target, selection),
         open: target
@@ -166,6 +184,10 @@ export default function OfficeScene({
           <Rug palette={palette} x={HUB_POSITION.x} z={HUB_POSITION.z} />
           <Bookshelf palette={palette} />
           <CoffeeCorner palette={palette} />
+          <LoungeCorner palette={palette} />
+          <Printer palette={palette} />
+          <WaterCooler palette={palette} />
+          <Whiteboard palette={palette} />
           <WallClock palette={palette} hour={light.hour} />
           {PLANTS.map((plant, i) =>
             plant.kind === 'tall' ? (
@@ -184,18 +206,17 @@ export default function OfficeScene({
               />
             ),
           )}
+          {LAMPS.map((lamp, i) => (
+            <PendantLamp
+              key={i}
+              palette={palette}
+              position={[lamp.x, LAMP_Y, lamp.z]}
+              glow={light.lamps}
+              light={i < profile.lampLights}
+            />
+          ))}
         </StaticBatch>
         <Outside palette={palette} light={light} />
-
-        {LAMPS.map((lamp, i) => (
-          <PendantLamp
-            key={i}
-            palette={palette}
-            position={[lamp.x, LAMP_Y, lamp.z]}
-            glow={light.lamps}
-            light={i < profile.lampLights}
-          />
-        ))}
 
         {entries.map(({ slot, agent, index, tone, selected, open }) => (
           <Station
@@ -219,26 +240,41 @@ export default function OfficeScene({
           teamKey={team.id}
           board={board}
           reduced={reduced}
+          speech={speechRegistry}
+          onArrivingChange={setArriving}
         />
         <Envelopes board={board} reduced={reduced} shadows={profile.shadows} />
         <TagProjector anchors={anchors} registry={tagRegistry} />
       </Canvas>
 
       <div className="desk-tags">
-        {entries.map(({ agent, activity, tone, selected, open }) => (
+        {entries.map(({ agent, shown, tone, selected, open }) => (
           <DeskTag
             key={agent.id}
             agent={agent}
             lang={lang}
-            activity={activity}
+            activity={shown}
             tone={tone}
-            status={texts.status(activity)}
+            status={texts.status(shown)}
             openLabel={texts.open(agent.name[lang])}
             selected={selected}
             onOpen={open}
             register={(el) => {
               if (el) tagRegistry.current.set(agent.id, el);
               else tagRegistry.current.delete(agent.id);
+            }}
+          />
+        ))}
+      </div>
+      <div className="speech-layer" aria-hidden="true">
+        {entries.map(({ agent }) => (
+          <span
+            key={agent.id}
+            className="speech"
+            style={{ '--agent': agent.deskColor } as CSSProperties}
+            ref={(el) => {
+              if (el) speechRegistry.current.set(agent.id, el);
+              else speechRegistry.current.delete(agent.id);
             }}
           />
         ))}

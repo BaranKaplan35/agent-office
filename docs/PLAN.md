@@ -36,7 +36,7 @@ camera at an isometric angle. **Every model is built in code from primitives** �
 external models, textures or HDRIs. The design is our own (see _Art direction_);
 it must not copy other "AI office" projects.
 
-Split into three sub-phases, each ending with a stop and a summary.
+Split into four sub-phases (1c-4 was added after 1c-3), each ending with a stop and a summary.
 
 ### 1c-1 — Room, light and layout ✅
 
@@ -188,6 +188,86 @@ Done as planned, with these decisions made along the way:
 **Testing for 1c:** unit tests for layout, daylight, navigation and activity mapping;
 visual checks via screenshots for 3–6 agents, three times of day, both quality
 modes, reduced motion, and phone width.
+
+### 1c-4 — Office life ✅
+
+Added after 1c-3, before phase 2: the office should feel like a real, lively office.
+
+Done as planned, with these decisions made along the way:
+
+- **Motion setting** (`motion.ts`): System / Full / Reduced in the ⚙ menu (now "Office
+  settings"), stored per viewer; System shows what the device asks for. `?motion=`
+  still overrides everything for screenshots
+- **Seated before working:** the scene shows its own "On the way to the desk…" state
+  (footprints badge, monitor still dark) from the envelope's launch until the agent sits;
+  panels keep the real status. The mock waits `MOCK_WALK_IN_MS` (default 4.5 s) before a
+  plan or a first report. The server can't know when a viewer's character sits (several
+  viewers, reduced motion, no WebGL), so this is a fixed walk-in time, not a signal from
+  the scene: the workflow still never depends on the 3D office. Revisions and the merge
+  happen at the desk and don't wait
+- **Personality** (`characters/personality.ts`, pure): five personalities, each a
+  temperament: idle-activity weights, break interval, sociability, walking pace. Without
+  `personality` in YAML, one is derived from the name (hash). The teams set it for some
+  agents and leave others to the fallback, to show both
+- **Idle spots** (`navigation/office.ts`): phone (open floor), water cooler, printer,
+  whiteboard, sofa seats and the armchair (characters sit down and get up again), and a
+  "look at a teammate's screen" spot beside each desk that its own agent never uses.
+  `SpotRegistry` picks an activity by weight, then a free spot for it
+- **Chats and high-fives** (`characters/social.ts`, pure): a `SocialDirector` gathers 2–3
+  idle agents (chance scaled by sociability, at most two chats at a time, a cooldown
+  afterwards) at the coffee counter, water cooler, a window, the lounge, the open floor or
+  beside a desk. Meeting places come from the layout and drop slots that would block a
+  seat or an idle spot; the coffee counter is too crowded for a standing group with 4
+  workers, so coffee chats use the two counter spots (reserved while chatting). Members
+  face the centre; the speaker gestures and gets an emoji or "…" bubble, the others nod
+  with folded arms. Work always wins: a member called to the desk leaves, and a pair
+  breaks up. An agent whose work is approved high-fives the nearest free teammate
+  (double high-five, 🙌)
+- **Ambient bubbles:** "?" when asking a neighbour, "…" on the phone, 💡 at the
+  whiteboard, 🎉 while celebrating. Speech bubbles are DOM, written straight from the
+  render loop (no React state per frame)
+- **Breaks at the desk:** after a personality-dependent stretch of typing (10–40 s): lean
+  back with hands behind the head, scratch the head, or turn to the nearest neighbour
+  and ask (body and head turn towards that desk). Mock work is short, so breaks show
+  mostly with real models
+- **New furniture** (`models/Lounge.tsx`): lounge under the right window (sofa, armchair,
+  side table, rug), printer and water cooler on the open right edge, a whiteboard on a
+  rolling stand at the front. Characters hold a phone, a paper cup, a printed page or a
+  marker when needed
+- **Lamp cords:** they now end at the ceiling (the top of the shadow box) with a small
+  canopy instead of rising far above the walls, and the hub lamp hangs in front of the
+  hub. `props.test.ts` checks that no lamp or cord overlaps a desk bubble at the default
+  view for 2–5 workers
+- **Performance:** same draw calls as 1c-3 (259 meshes, 178 shadow casters, was 181 for
+  a 5-agent team): lamps' fixed parts are batched (bulbs stay dynamic), the new props
+  share a small colour set, and each forearm is merged with its hand
+- Reduced motion: no wandering, chats, breaks or speech bubbles
+
+- Original plan for this sub-phase:
+
+- **Motion setting:** the header ⚙ menu gets a persistent "Motion: System / Full /
+  Reduced" choice (per viewer, localStorage, default System). Windows with animation
+  effects turned off reports `prefers-reduced-motion`, which made characters "teleport"
+- **Seated before working:** in full motion an agent's bubble and monitor only switch
+  to "working" once the agent sits at the desk ("on the way" until then); the mock
+  provider waits a walk-in time (`MOCK_WALK_IN_MS`) before it starts counting, so the
+  report doesn't land while the agent is still walking
+- **Personality** (optional `personality` in YAML: social, diligent, coffee, calm,
+  curious): decides what an agent does when idle and how often it takes short breaks.
+  Without it, a stable personality is derived from the agent's name
+- **Conversations:** two (sometimes three) idle agents meet at the coffee corner, a
+  desk, a window or the lounge, face each other, gesture, and show speech bubbles with
+  emoji or "…" (no text). High-fives when an agent's work is approved
+- **More idle behaviour:** phone calls, looking at a teammate's screen, stretching,
+  drinking water, fetching paper from the printer, drawing on the whiteboard, sitting
+  in the lounge
+- **Breaks while working:** leaning back, scratching the head, turning to a neighbour
+  to ask something
+- **Fill the office:** lounge corner (sofa, armchair), printer, whiteboard and water
+  cooler on the empty front and right floor; new behaviours use them
+- **Fix:** pendant lamp cords ran through the name bubbles
+- Rules: behaviour logic stays pure and tested, apart from the renderer; reduced
+  motion turns conversations and wandering off; performance no worse than 1c-3
 
 ## Phase 2 — Real models, multi-provider
 

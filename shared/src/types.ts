@@ -2,7 +2,7 @@
  * Types shared by server and client. This file is the single source of truth
  * for the shape of teams, tasks and agent messages.
  */
-import type { LANGS, LLM_PROVIDERS } from './constants';
+import type { LANGS, LLM_PROVIDERS, PERSONALITIES } from './constants';
 
 export type Lang = (typeof LANGS)[number];
 export type LLMProviderName = (typeof LLM_PROVIDERS)[number];
@@ -33,7 +33,14 @@ export interface AgentConfig {
   dependsOn?: string[];
   /** Optional canned Markdown used by the mock provider. */
   mockResponse?: string;
+  /**
+   * What the character does in its free time in the office. Optional: without it,
+   * a stable personality is derived from the agent's name.
+   */
+  personality?: Personality;
 }
+
+export type Personality = (typeof PERSONALITIES)[number];
 
 export interface TeamSettings {
   /** Revisions allowed per subtask before only "approve" remains. */

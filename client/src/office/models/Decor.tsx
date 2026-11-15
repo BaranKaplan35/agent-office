@@ -1,6 +1,7 @@
 import { mixHex } from '../scene/daylight';
 import type { ScenePalette } from '../scene/palette';
 import { ROOM } from '../layout';
+import { CEILING_Y } from '../props';
 import { Ball, Box, Cone, Cyl, type V3 } from './parts';
 
 // ------------------------------------------------------------------- plants
@@ -216,14 +217,24 @@ export function PendantLamp({
 }) {
   const shade = mixHex(palette.surface, palette.accent, 0.25);
   const bulbGlow = 0.35 + glow * 2.4;
+  // the cord ends at the ceiling (the top of the room's shadow box), with a canopy
+  const cord = Math.max(0.1, CEILING_Y - position[1] - 0.15);
   return (
     <group position={position}>
       <Cyl
         radius={0.012}
-        height={1.7}
-        position={[0, 0.85 + 0.15, 0]}
+        height={cord}
+        position={[0, 0.15 + cord / 2, 0]}
         color={palette.ink}
         segments={4}
+        castShadow={false}
+      />
+      <Cyl
+        radius={0.07}
+        height={0.03}
+        position={[0, 0.15 + cord, 0]}
+        color={palette.ink}
+        segments={10}
         castShadow={false}
       />
       <Cyl
@@ -234,15 +245,18 @@ export function PendantLamp({
         segments={20}
         openEnded
       />
-      <Ball
-        radius={0.11}
-        detail={1}
-        position={[0, -0.08, 0]}
-        color="#fff4d6"
-        emissive={palette.lamp}
-        emissiveIntensity={bulbGlow}
-        castShadow={false}
-      />
+      {/* the bulb follows the time of day, so it is never merged */}
+      <group userData={{ dynamic: true }}>
+        <Ball
+          radius={0.11}
+          detail={1}
+          position={[0, -0.08, 0]}
+          color="#fff4d6"
+          emissive={palette.lamp}
+          emissiveIntensity={bulbGlow}
+          castShadow={false}
+        />
+      </group>
       {light && (
         <pointLight
           position={[0, -0.25, 0]}

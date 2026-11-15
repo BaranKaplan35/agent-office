@@ -1,4 +1,4 @@
-import { MAX_WORKERS, MIN_WORKERS, type TeamConfig } from '@agent-office/shared';
+import { MAX_WORKERS, MIN_WORKERS, PERSONALITIES, type TeamConfig } from '@agent-office/shared';
 import { z } from 'zod';
 import { findCycle } from '../lib/graph';
 
@@ -22,6 +22,7 @@ const AgentSchema = z.strictObject({
   systemPrompt: z.string().trim().min(20, 'is too short (at least 20 characters)'),
   dependsOn: z.array(IdSchema).default([]),
   mockResponse: z.string().optional(),
+  personality: z.enum(PERSONALITIES).optional(),
 });
 
 const DEFAULT_SETTINGS = { maxRevisions: 3, maxOutputTokens: 2048 };

@@ -6,7 +6,18 @@ export interface MockOptions {
   /** Each answer waits a random time in [minDelayMs, maxDelayMs] to feel like work. */
   minDelayMs: number;
   maxDelayMs: number;
+  /**
+   * Added before a plan or a first work report: in the office the agent first walks
+   * to the desk and sits down, and the "work" only starts then. Revisions and the
+   * merge happen at the desk already, so they don't wait.
+   */
+  walkInMs?: number;
   random?: () => number;
+}
+
+/** Calls whose agent may still be on the way to the desk. */
+export function needsWalkIn(meta: LLMCallMeta): boolean {
+  return meta.kind === 'plan' || (meta.kind === 'work' && !meta.revision);
 }
 
 const T = {
@@ -147,7 +158,8 @@ export function createMockProvider(options: MockOptions): LLMProvider {
     name: 'mock',
     async generate(request: LLMRequest): Promise<LLMResponse> {
       const { minDelayMs: min, maxDelayMs: max } = options;
-      const delay = min + Math.round(random() * Math.max(0, max - min));
+      const walkIn = needsWalkIn(request.meta) ? (options.walkInMs ?? 0) : 0;
+      const delay = walkIn + min + Math.round(random() * Math.max(0, max - min));
       if (delay > 0) await sleep(delay, request.signal);
       else if (request.signal?.aborted) throw request.signal.reason;
 

@@ -54,6 +54,16 @@ export function calmGoalFor(activity: AgentActivity): Goal {
   return goal;
 }
 
+/** Activities that mean "sit down and work": shown as "on the way" until the agent sits. */
+export function isDeskWork(activity: AgentActivity): boolean {
+  return (
+    activity === 'planning' ||
+    activity === 'working' ||
+    activity === 'revising' ||
+    activity === 'merging'
+  );
+}
+
 export function sameGoal(a: Goal, b: Goal): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'desk' && b.kind === 'desk') return a.pose === b.pose && a.thenFree === b.thenFree;

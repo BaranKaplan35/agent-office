@@ -1,12 +1,24 @@
 import type { Lang, PublicAgent } from '@agent-office/shared';
-import { Check, Coffee, Hourglass, Network, PartyPopper, PencilLine, X } from 'lucide-react';
+import {
+  Check,
+  Coffee,
+  Footprints,
+  Hourglass,
+  Network,
+  PartyPopper,
+  PencilLine,
+  X,
+} from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { ActivityTone, AgentActivity } from '../../state/selectors';
+
+/** What the bubble shows: the agent's activity, or "on the way" until it sits down. */
+export type SceneActivity = AgentActivity | 'arriving';
 
 interface Props {
   agent: PublicAgent;
   lang: Lang;
-  activity: AgentActivity;
+  activity: SceneActivity;
   tone: ActivityTone;
   /** Translated status text. */
   status: string;
@@ -30,7 +42,8 @@ const dots = (
 );
 
 /** The small symbol in the bubble's badge for each activity (null = no badge). */
-const GLYPH: Record<AgentActivity, ReactNode> = {
+const GLYPH: Record<SceneActivity, ReactNode> = {
+  arriving: <Footprints {...ICON} />,
   idle: <Coffee {...ICON} />,
   notNeeded: null,
   planning: dots,
@@ -46,7 +59,7 @@ const GLYPH: Record<AgentActivity, ReactNode> = {
 };
 
 /** Bubbles that stay open without hovering: they need the user. */
-const ATTENTION: ReadonlySet<AgentActivity> = new Set(['review', 'failed']);
+const ATTENTION: ReadonlySet<SceneActivity> = new Set(['review', 'failed']);
 
 /**
  * A status bubble above a desk: name and a status badge, opening to show the role

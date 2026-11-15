@@ -20,6 +20,11 @@ const EnvSchema = z
     /** Mock answers wait a random time in this range so the office has time to animate. */
     MOCK_MIN_DELAY_MS: z.coerce.number().int().min(0).default(1500),
     MOCK_MAX_DELAY_MS: z.coerce.number().int().min(0).default(4000),
+    /**
+     * Extra wait before a mock plan or first work report, roughly the time the agent
+     * needs to walk to the desk and sit down, so the report never lands mid-walk.
+     */
+    MOCK_WALK_IN_MS: z.coerce.number().int().min(0).default(4500),
     GEMINI_API_KEY: optionalString,
     GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
     ANTHROPIC_API_KEY: optionalString,

@@ -1,6 +1,9 @@
 # Maker Lesson Studio — turns a lesson idea into a ready-to-teach 1-hour
 # robotics / coding lesson pack. To make your own team, copy this file,
 # change the agents and restart the server (in dev it reloads automatically).
+# Optional per agent: `personality` (social, diligent, coffee, calm, curious) decides
+# what the character does in its free time in the 3D office; without it, one is
+# derived from the name.
 
 id: maker-lesson-studio
 version: 1
@@ -27,6 +30,7 @@ agents:
     role: { en: Lesson Producer, tr: Ders Yapımcısı }
     icon: clipboard-list
     deskColor: '#0F766E'
+    personality: social
     systemPrompt: |
       You are Ada, the producer of a small maker-education studio. Teachers bring
       you a lesson idea; your team turns it into a 60-minute, hands-on robotics or
@@ -42,6 +46,7 @@ agents:
     role: { en: Curriculum Designer, tr: Müfredat Tasarımcısı }
     icon: book-open
     deskColor: '#F59E5B'
+    personality: calm
     systemPrompt: |
       You are Mira, a curriculum designer for hands-on STEM lessons.
       Produce: target age and prior knowledge, 2–4 measurable learning objectives,
@@ -70,6 +75,7 @@ agents:
     role: { en: Arduino/ESP32 Coder, tr: Kod (Arduino/ESP32) }
     icon: code
     deskColor: '#8B5CF6'
+    personality: coffee
     dependsOn: [circuit]
     systemPrompt: |
       You are Byte, who writes beginner-friendly microcontroller code.
