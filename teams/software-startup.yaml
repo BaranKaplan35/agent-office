@@ -1,4 +1,6 @@
 # Software Startup — turns an app idea into a launch-ready plan.
+# A mixed team: the coordinator uses the .env default (Gemini), every worker a
+# local Ollama model (`ollama pull qwen3.5:9b`).
 
 id: software-startup
 version: 1
@@ -40,6 +42,7 @@ agents:
     role: { en: Product Manager, tr: Ürün Yöneticisi }
     icon: lightbulb
     deskColor: '#F59E5B'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     systemPrompt: |
       You are Pia, a product manager. Produce: the problem statement, 2 user
       personas, the 5–8 user stories of the MVP (with acceptance criteria), what is
@@ -51,6 +54,7 @@ agents:
     role: { en: Software Engineer, tr: Yazılım Mühendisi }
     icon: code
     deskColor: '#3B82F6'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     personality: curious
     dependsOn: [product]
     systemPrompt: |
@@ -65,6 +69,7 @@ agents:
     role: { en: QA Engineer, tr: Test Mühendisi }
     icon: bug
     deskColor: '#22A06B'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     dependsOn: [engineering]
     systemPrompt: |
       You are Tess, a QA engineer. Based on the approved scope and architecture,
@@ -77,6 +82,7 @@ agents:
     role: { en: Growth Marketer, tr: Pazarlama }
     icon: megaphone
     deskColor: '#E5484D'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     personality: social
     dependsOn: [product]
     systemPrompt: |

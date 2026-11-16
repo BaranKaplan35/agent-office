@@ -1746,3 +1746,13 @@ button.queue-item:hover {
 .desk-tag.activity-asking .desk-tag-badge b {
   font-size: 14px;
 }
+
+/* Planning failed: what went wrong, and "Try again". */
+.task-blocked.task-failed {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
+.task-failed p {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}

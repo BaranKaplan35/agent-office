@@ -6,7 +6,8 @@
 # derived from the name.
 # Optional per agent: `llm: { provider, model }` runs that agent on its own model
 # (mock, gemini, anthropic, ollama, openrouter). Without it the .env default applies.
-# Here Quinn runs on a local Ollama model while the rest use the default: a mixed team.
+# A mixed team: the coordinator (plan, questions, merge) uses the .env default
+# (Gemini), every worker a local Ollama model, which saves the cloud quota.
 
 id: maker-lesson-studio
 version: 1
@@ -49,6 +50,7 @@ agents:
     role: { en: Curriculum Designer, tr: Müfredat Tasarımcısı }
     icon: book-open
     deskColor: '#F59E5B'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     personality: calm
     systemPrompt: |
       You are Mira, a curriculum designer for hands-on STEM lessons.
@@ -63,6 +65,7 @@ agents:
     role: { en: Circuit & Materials, tr: Devre & Malzeme }
     icon: cpu
     deskColor: '#3B82F6'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     dependsOn: [curriculum]
     systemPrompt: |
       You are Volt, an electronics specialist for classrooms.
@@ -78,6 +81,7 @@ agents:
     role: { en: Arduino/ESP32 Coder, tr: Kod (Arduino/ESP32) }
     icon: code
     deskColor: '#8B5CF6'
+    llm: { provider: ollama, model: 'qwen3.5:9b' }
     personality: coffee
     dependsOn: [circuit]
     systemPrompt: |

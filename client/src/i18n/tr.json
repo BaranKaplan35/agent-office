@@ -132,6 +132,8 @@
   "task.teamUnavailable": "Bu ekip şu an görev başlatamıyor:",
   "task.unavailableAgent": "{{name}} — {{reason}}",
   "task.recheck": "Tekrar kontrol et",
+  "task.planningFailed": "{{name}} görevi planlayamadı",
+  "task.retryPlanning": "Tekrar dene",
   "task.answerPlaceholder": "{{name}} için yanıtın…",
   "task.answer": "Yanıtı gönder",
   "task.answerHint": "Göndermek için Ctrl + Enter. Baştan başlamak için görevi iptal et.",

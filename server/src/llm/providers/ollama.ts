@@ -11,6 +11,8 @@ import { postJson, type FetchLike } from './http';
 
 export interface OllamaOptions {
   baseUrl: string;
+  /** Context window in tokens (prompt + answer). Ollama's default of 4096 is too small. */
+  numCtx?: number;
   fetch?: FetchLike;
 }
 
@@ -44,7 +46,10 @@ export function createOllamaProvider(options: OllamaOptions): LLMProvider {
         ...(think === undefined ? {} : { think }),
         messages: [{ role: 'system', content: request.system }, ...request.messages],
         ...(request.json ? { format: PLAN_JSON_SCHEMA } : {}),
-        options: { num_predict: request.maxOutputTokens },
+        options: {
+          num_predict: request.maxOutputTokens,
+          ...(options.numCtx ? { num_ctx: options.numCtx } : {}),
+        },
       },
       { signal: request.signal },
     );

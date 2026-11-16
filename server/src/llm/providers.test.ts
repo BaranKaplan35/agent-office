@@ -476,3 +476,12 @@ describe('token counts and call metrics', () => {
     });
   });
 });
+
+describe('ollama context window', () => {
+  it('asks for the configured context window so long prompts are not cut', async () => {
+    const { fn, calls } = fakeFetch(() => json({ message: { content: '# Report' } }));
+    await createOllamaProvider({ baseUrl: 'http://x', numCtx: 16384, fetch: fn }).generate(work());
+    expect(calls[0]!.body.options).toEqual({ num_predict: 1024, num_ctx: 16384 });
+    expect(parseEnv({}).OLLAMA_NUM_CTX).toBe(16384);
+  });
+});

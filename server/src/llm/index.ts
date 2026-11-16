@@ -71,7 +71,11 @@ function createAdapter(provider: LLMProviderName, env: Env, deps: RouterDeps): L
         ? createAnthropicProvider({ apiKey: env.ANTHROPIC_API_KEY })
         : missingKey(provider, 'ANTHROPIC_API_KEY');
     case 'ollama':
-      return createOllamaProvider({ baseUrl: env.OLLAMA_BASE_URL, fetch: deps.fetch });
+      return createOllamaProvider({
+        baseUrl: env.OLLAMA_BASE_URL,
+        numCtx: env.OLLAMA_NUM_CTX,
+        fetch: deps.fetch,
+      });
     case 'openrouter':
       return env.OPENROUTER_API_KEY
         ? createOpenRouterProvider({ apiKey: env.OPENROUTER_API_KEY, fetch: deps.fetch })

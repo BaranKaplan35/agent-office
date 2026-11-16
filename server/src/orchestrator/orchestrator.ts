@@ -177,6 +177,24 @@ export class Orchestrator {
     return structuredClone(task);
   }
 
+  /**
+   * Plan again after planning failed (e.g. a rate limit or the model was down).
+   * The task keeps its prompt and any answered questions. Only a task that failed
+   * before it had a plan can be retried; later failures are per report.
+   */
+  retryPlanning(taskId: string): Task {
+    const task = this.mustGet(taskId);
+    if (task.status !== 'failed' || task.subtasks.length > 0) {
+      throw new OrchestratorError('invalid_state', 'Planning has not failed');
+    }
+    task.status = 'planning';
+    task.error = undefined;
+    this.runtime(task).abort = new AbortController();
+    this.publish(task);
+    void this.runPlanning(task);
+    return structuredClone(task);
+  }
+
   approve(taskId: string, subtaskId: string): Task {
     const task = this.mustGetActive(taskId);
     const sub = this.mustGetSubtask(task, subtaskId);
@@ -368,7 +386,7 @@ export class Orchestrator {
             from: 'system',
             to: 'user',
             revision: 0,
-            payload: { code: 'planning_failed', message: task.error, retryable: false },
+            payload: { code: 'planning_failed', message: task.error, retryable: true },
           }),
         );
         return;

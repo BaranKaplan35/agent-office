@@ -132,6 +132,8 @@
   "task.teamUnavailable": "This team can't start a task right now:",
   "task.unavailableAgent": "{{name}} — {{reason}}",
   "task.recheck": "Check again",
+  "task.planningFailed": "{{name}} couldn't plan the task",
+  "task.retryPlanning": "Try again",
   "task.answerPlaceholder": "Your answer to {{name}}…",
   "task.answer": "Send answer",
   "task.answerHint": "Ctrl + Enter to send. Cancel the task to start over.",

@@ -4,7 +4,7 @@ import type { LLMRequest } from '../llm';
 import { needsDetails } from '../llm/mock';
 import { instantMock, scripted, setup, testTeam, waitFor } from '../test/fixtures';
 import { parseCoordinatorAnswer, PlanParseError } from './planParser';
-import { buildPlanRequest, buildWorkRequest, requestLine } from './prompts';
+import { buildPlanRequest, buildWorkRequest, requestLine, wordBudget } from './prompts';
 
 const team = testTeam();
 const clarify = (reply: string, questions: string[]) =>
@@ -216,5 +216,59 @@ describe('Orchestrator — metrics', () => {
       model: 'qwen3.5:9b',
       durationMs: 4321,
     });
+  });
+});
+
+describe('Orchestrator — retry planning', () => {
+  it('plans again after a failed planning call, keeping the answered questions', async () => {
+    let down = true;
+    const llm = scripted(instantMock(), (req) =>
+      down && req.meta.kind === 'plan' && req.meta.clarifications.length > 0
+        ? Promise.reject(
+            new Error('gemini · gemini-3.6-flash: the daily free-tier limit is used up'),
+          )
+        : undefined,
+    );
+    const { orchestrator, create } = setup({ llm });
+    const { id } = create('selam');
+    await waitFor(orchestrator, id, (t) => t.status === 'awaiting_clarification');
+    orchestrator.answerClarification(id, 'A tiny traffic light lesson');
+
+    const failed = await waitFor(orchestrator, id, (t) => t.status === 'failed');
+    expect(failed.error).toContain('daily free-tier limit');
+    const error = failed.messages.at(-1);
+    expect(error?.type === 'error' && error.payload.retryable).toBe(true);
+
+    down = false;
+    expect(orchestrator.retryPlanning(id).status).toBe('planning');
+    const running = await waitFor(orchestrator, id, (t) => t.status === 'running');
+    expect(running.error).toBeUndefined();
+    expect(running.clarifications[0]!.answer).toBe('A tiny traffic light lesson');
+    expect(running.subtasks.length).toBeGreaterThan(0);
+  });
+
+  it('only retries a task whose planning failed', async () => {
+    const { orchestrator, create } = setup();
+    const { id } = create();
+    expect(() => orchestrator.retryPlanning(id)).toThrow(/Planning has not failed/);
+    await waitFor(orchestrator, id, (t) => t.status === 'running');
+    expect(() => orchestrator.retryPlanning(id)).toThrow(/Planning has not failed/);
+  });
+});
+
+describe('report length', () => {
+  it('gives every report a word budget below its token limit', () => {
+    expect(wordBudget(2048)).toBe(650);
+    expect(wordBudget(100)).toBe(150);
+    const req = buildWorkRequest({
+      team,
+      agent: team.agents[1]!,
+      task: 't',
+      lang: 'tr',
+      title: 'T',
+      instructions: 'I',
+      sources: [],
+    });
+    expect(req.system).toContain('under about 300 words');
   });
 });

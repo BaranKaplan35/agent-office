@@ -23,9 +23,13 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. No API key is needed: the app runs with mock agents by default.
+Open http://localhost:5173. No API key is needed: the coordinators run as mock agents by
+default. The workers of both bundled teams run on a local [Ollama](https://ollama.com)
+model, so install Ollama and run `ollama pull qwen3.5:9b` first (without it, the app
+names the agents that can't run and the teams can't start).
 
-To use a real model, copy `.env.example` to `.env` and set `LLM_PROVIDER` and the matching API key.
+To use a real model for the coordinators, copy `.env.example` to `.env` and set
+`LLM_PROVIDER` and the matching API key.
 
 ## Models and providers
 
@@ -46,8 +50,11 @@ with that provider's default model; any agent can pick its own in the team file.
   report says so and when it resets. Putting some agents on a local Ollama model
   spreads the load.
 - **Ollama:** install it, then `ollama pull qwen3.5:9b` (or the model you name). Local
-  models get one call at a time and a longer timeout (`OLLAMA_CONCURRENCY`,
-  `OLLAMA_TIMEOUT_MS`).
+  models get one call at a time, a longer timeout and a 16K context window, so a worker
+  that builds on its teammates' reports gets them in full (`OLLAMA_CONCURRENCY`,
+  `OLLAMA_TIMEOUT_MS`, `OLLAMA_NUM_CTX`).
+- **If planning fails** (quota, model down), the task bar shows why and offers "Try
+  again"; the prompt and any answers to the coordinator's questions are kept.
 - **At startup** the server checks every agent's model (keys present, Ollama running,
   model pulled) and names the team and agent that can't run. Those teams can be viewed
   but not started until it is fixed; the server rechecks every 30 s.
@@ -77,9 +84,10 @@ agents:
 ```
 
 Each provider used needs its key in `.env`. API keys never leave the server; model
-names are public and shown in the UI. The bundled Maker Lesson Studio team is a small
-example: everyone runs on the default except Quinn (testing), who runs on
-`ollama / qwen3.5:9b`.
+names are public and shown in the UI. Both bundled teams are mixed teams: the
+coordinator (planning, questions, the final merge) uses the `.env` default, for example
+Gemini, and every worker runs on `ollama / qwen3.5:9b`. That keeps a task to two or
+three cloud calls, which fits the small free tiers.
 
 ## Scripts
 

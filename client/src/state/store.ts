@@ -44,6 +44,8 @@ export interface AppState {
   setTab: (tab: PanelTab) => void;
   dismissError: () => void;
 
+  /** Plan again after planning failed (same prompt and answers). */
+  retryPlanning: () => Promise<boolean>;
   /** Answer the coordinator's questions; planning continues. */
   answer: (text: string) => Promise<boolean>;
   approve: () => Promise<boolean>;
@@ -211,6 +213,9 @@ export const useApp = create<AppState>()((set, get) => {
     setTab: (tab) => set({ tab }),
 
     dismissError: () => set({ error: null }),
+
+    retryPlanning: async () =>
+      !!(await command('retry:plan', (taskId) => api.retryPlanning(taskId))),
 
     answer: async (text) => !!(await command('answer', (taskId) => api.clarify(taskId, text))),
 

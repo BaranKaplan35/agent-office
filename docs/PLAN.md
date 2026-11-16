@@ -430,8 +430,18 @@ Small improvements collected along the way; done after the main phases unless on
 becomes blocking.
 
 - [ ] Prompt tuning for both templates across providers (from 2b)
-- [ ] A planning failure (e.g. a rate limit right after the user answered a question)
-      fails the whole task; offer "Try again" for planning like reports have
+- [x] A planning failure (e.g. a rate limit right after the user answered a question)
+      fails the whole task; offer "Try again" for planning like reports have.
+      Done after 2b: `POST /tasks/:id/plan/retry` (`retryPlanning`, only for a task
+      that failed before it had a plan; prompt and answers are kept; the error message
+      is now `retryable`); the task bar shows the reason and "Try again"
+- [x] Model split after 2b (the Gemini free tier allows 20 requests a day): in both
+      teams the coordinator stays on the `.env` default (`gemini-3.6-flash`) and every
+      worker runs on `ollama / qwen3.5:9b`, so a task makes two or three cloud calls.
+      Found while testing: Ollama's default context (4096) silently cut long prompts,
+      so `OLLAMA_NUM_CTX` (default 16384) is sent as `num_ctx`; reports hit the
+      2048-token cap mid-sentence, so the report rules now give a word budget
+      (`wordBudget`: about a third of the token limit)
 
 - [ ] When a task is completed, the "All done" screen in the right panel offers
       "View final" and "Download .md" buttons directly (today you have to open the

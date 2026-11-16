@@ -49,6 +49,7 @@ export const api = {
   task: (taskId: string) => request<Task>(`/tasks/${enc(taskId)}`),
   createTask: (body: CreateTaskRequest) => post<CreateTaskResponse>('/tasks', body),
   cancel: (taskId: string) => post<Task>(`/tasks/${enc(taskId)}/cancel`),
+  retryPlanning: (taskId: string) => post<Task>(`/tasks/${enc(taskId)}/plan/retry`),
   clarify: (taskId: string, answer: string) =>
     post<Task>(`/tasks/${enc(taskId)}/clarify`, { answer }),
 

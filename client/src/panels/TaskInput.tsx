@@ -6,6 +6,7 @@ import {
   coordinatorOf,
   isTaskActive,
   openClarification,
+  planningFailed,
   requestText,
   unavailableAgents,
 } from '../state/selectors';
@@ -29,6 +30,7 @@ export function TaskInput() {
   const newTask = useApp((s) => s.newTask);
   const refreshTeams = useApp((s) => s.refreshTeams);
   const answer = useApp((s) => s.answer);
+  const retryPlanning = useApp((s) => s.retryPlanning);
 
   const [prompt, setPrompt] = useState('');
   const [reply, setReply] = useState('');
@@ -78,6 +80,22 @@ export function TaskInput() {
 
   return (
     <form className={`task card${asking ? ' is-asking' : ''}`} onSubmit={submit}>
+      {task && planningFailed(task) && (
+        <div className="task-blocked task-failed" role="alert">
+          <div>
+            <strong>{t('task.planningFailed', { name: leadName })}</strong>
+            {task.error && <p>{task.error}</p>}
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={pending === 'retry:plan'}
+            onClick={() => void retryPlanning()}
+          >
+            {t('task.retryPlanning')}
+          </button>
+        </div>
+      )}
       {question && (
         <div className="task-question" role="status" aria-live="polite">
           <span className="task-question-icon" aria-hidden="true">

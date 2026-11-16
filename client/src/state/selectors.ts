@@ -205,6 +205,11 @@ export function requestText(task: Task): string {
   );
 }
 
+/** Planning failed before there was a plan: the task can be planned again. */
+export function planningFailed(task: Task | null): boolean {
+  return task?.status === 'failed' && task.subtasks.length === 0;
+}
+
 /** The coordinator's open question round, while it waits for the user's answer. */
 export function openClarification(task: Task | null): Clarification | null {
   if (task?.status !== 'awaiting_clarification') return null;

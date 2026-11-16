@@ -7,6 +7,7 @@ import {
   failedItems,
   isTaskActive,
   openClarification,
+  planningFailed,
   progress,
   requestText,
   reviewableFor,
@@ -127,6 +128,14 @@ describe('clarification', () => {
     expect(agentActivity(t, team.agents[1]!)).toBe('idle');
     expect(activityTone('asking')).toBe('review');
     expect(isTaskActive(t)).toBe(true);
+  });
+
+  it('planningFailed is a failed task without a plan', () => {
+    expect(planningFailed(task({ status: 'failed' }))).toBe(true);
+    expect(
+      planningFailed(task({ status: 'failed', subtasks: [sub('sub_1', 'a', 'failed')] })),
+    ).toBe(false);
+    expect(planningFailed(task({ status: 'planning' }))).toBe(false);
   });
 
   it('requestText adds the answers to the prompt', () => {

@@ -100,6 +100,11 @@ export function apiRouter({ env, teams, orchestrator, problems = () => [] }: Api
     res.json(orchestrator.cancel(req.params.taskId));
   });
 
+  // ---- planning failed (model down, quota): plan again with the same prompt and answers
+  api.post('/tasks/:taskId/plan/retry', (req, res) => {
+    res.json(orchestrator.retryPlanning(req.params.taskId));
+  });
+
   // ---- the coordinator asked before planning; the user answers
   api.post('/tasks/:taskId/clarify', (req, res) => {
     const { answer } = parseBody(ClarifyBody, req.body);

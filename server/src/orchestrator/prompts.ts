@@ -12,15 +12,24 @@ export interface ApprovedSource {
   markdown: string;
 }
 
+/**
+ * A word budget that fits the token limit with room to spare (about three tokens per
+ * Turkish word, fewer in English), so reports end properly instead of being cut off.
+ */
+export function wordBudget(maxOutputTokens: number): number {
+  return Math.max(150, Math.floor((maxOutputTokens * 0.33) / 50) * 50);
+}
+
 /** Appended to every report-writing system prompt so team configs stay short. */
-function reportRules(lang: Lang): string {
+function reportRules(lang: Lang, maxOutputTokens: number): string {
   return `
 ---
 Output rules (from the AgentOffice system):
 - Write the entire report in ${LANGUAGE_NAMES[lang]}.
 - Use GitHub-flavoured Markdown. Put code in fenced code blocks. Never use raw HTML.
 - Begin with one or two plain sentences that summarise the result (no heading before them), then use "##" headings for the sections.
-- No greetings, no meta commentary, no questions at the end. If something is unclear, list it under an "Open questions" section.`;
+- No greetings, no meta commentary, no questions at the end. If something is unclear, list it under an "Open questions" section.
+- Keep the whole document under about ${wordBudget(maxOutputTokens)} words: it is cut off at ${maxOutputTokens} tokens. Prefer short lists and tables to long prose.`;
 }
 
 function coordinatorOf(team: TeamConfig): AgentConfig {
@@ -168,7 +177,7 @@ export function buildWorkRequest(input: WorkRequestInput): LLMRequest {
   }
 
   return {
-    system: agent.systemPrompt + reportRules(lang),
+    system: agent.systemPrompt + reportRules(lang, team.settings.maxOutputTokens),
     messages,
     maxOutputTokens: team.settings.maxOutputTokens,
     meta: {
@@ -201,13 +210,14 @@ export function buildMergeRequest(input: MergeRequestInput): LLMRequest {
   const clarifications = input.clarifications ?? [];
   const coordinator = coordinatorOf(team);
   const finalTitle = team.finalTitle[lang];
+  const maxOutputTokens = Math.min(team.settings.maxOutputTokens * 2, 16384);
 
   const system = `${coordinator.systemPrompt}
 ---
 You are now MERGING. Combine the approved reports into one coherent final document titled "${finalTitle}".
 - Start the document with "# ${finalTitle}" and a short overview.
 - Keep every essential detail (code, tables, materials, numbers). Remove duplication and fix inconsistencies between sections.
-- Organise it for the reader, not by team member.${reportRules(lang)}`;
+- Organise it for the reader, not by team member.${reportRules(lang, maxOutputTokens)}`;
 
   const brief = taskBlock(task, clarifications) + sourcesBlock('Approved reports', sources, lang);
   const messages: ChatMessage[] = [{ role: 'user', content: brief }];
@@ -224,7 +234,7 @@ You are now MERGING. Combine the approved reports into one coherent final docume
   return {
     system,
     messages,
-    maxOutputTokens: Math.min(team.settings.maxOutputTokens * 2, 16384),
+    maxOutputTokens,
     meta: {
       kind: 'merge',
       team,

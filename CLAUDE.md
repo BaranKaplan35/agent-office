@@ -148,6 +148,8 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
 - `POST /tasks {teamId, prompt, lang}` → `201 {taskId}` · `GET /tasks/:id` (snapshot)
 - `POST /tasks/:id/clarify {answer}` — answer the coordinator's questions (status
   `awaiting_clarification`); planning continues with the answer
+- `POST /tasks/:id/plan/retry` — plan again after planning failed (no plan yet); keeps
+  the prompt and the answers
 - `GET /tasks/:id/events` — SSE; first event is a snapshot, then one event per change
 - `POST /tasks/:id/subtasks/:subId/{approve|revise|retry}` (`revise` body: `{note}`)
 - `POST /tasks/:id/final/{approve|revise|retry}` · `POST /tasks/:id/cancel`

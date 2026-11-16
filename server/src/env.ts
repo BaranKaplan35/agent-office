@@ -38,6 +38,9 @@ const EnvSchema = z
     OLLAMA_MODEL: z.string().trim().min(1).default('qwen3.5:9b'),
     OLLAMA_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(1),
     OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(240_000),
+    // Ollama's own default window (4096) silently cuts long prompts, e.g. a worker that
+    // gets its teammates' approved reports.
+    OLLAMA_NUM_CTX: z.coerce.number().int().min(2048).max(262_144).default(16_384),
     OPENROUTER_API_KEY: optionalString,
     OPENROUTER_MODEL: z.string().trim().min(1).default('openrouter/auto'),
   })
