@@ -1,0 +1,22 @@
+# Render Blueprint for the public demo: one free web service in mock mode.
+# Mock mode needs no API keys and runs every agent on canned answers, so visitors
+# can try the whole workflow without spending anyone's quota. Never add real API
+# keys to this service. See docs/DEPLOY.md.
+services:
+  - type: web
+    name: agent-office-demo
+    runtime: node
+    plan: free
+    # Don't set NODE_ENV=production here: `npm ci` would skip the dev dependencies the
+    # build needs. The server build is production code either way.
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: LLM_PROVIDER
+        value: mock
+      # The free plan's disk is wiped on every restart, so don't bother saving tasks.
+      - key: PERSIST_TASKS
+        value: 'false'

@@ -460,10 +460,22 @@ on Render are in; the plan-approval step moved to Polish.
   code, and found a real mismatch in the rerun. Left as they are: the 9B model still
   opens some reports with "Here is…" and makes small Turkish spelling mistakes
 
-### 3c — Persistence and demo
+### 3c — Persistence and demo ✅
 
-- JSON-file persistence of tasks
-- Deploy a mock-mode demo on Render (step-by-step guide for the user), last
+- **Tasks survive restarts** (`orchestrator/persistence.ts`): one JSON file,
+  `data/tasks.json` (git-ignored; `TASKS_FILE`, `PERSIST_TASKS=false` turns it off).
+  Saved ~150 ms after each change (bursts are one write) and on SIGINT/SIGTERM; atomic
+  write (temp file + rename); an unreadable file is moved aside. Each record keeps the
+  task, the team snapshot, the message counter and the last revision notes. On restore,
+  work that was in flight (planning, a report, the merge) is marked failed with
+  "Interrupted by a server restart" and the existing Try again / Retry continues it.
+  Checked live: hard-killed the server mid-report, restarted, the task came back with the
+  report marked interrupted, Retry finished it
+- **Demo on Render** in mock mode: `render.yaml` (Blueprint: free web service,
+  `npm ci && npm run build`, `npm start`, health check `/api/health`, `LLM_PROVIDER=mock`,
+  `PERSIST_TASKS=false` because the free disk is wiped on restart) and `docs/DEPLOY.md`
+- **`docs/ARCHITECTURE.md`** (Turkish): the design explained for an interview, with ten
+  likely questions and short answers
 
 ## Polish (left for the end)
 

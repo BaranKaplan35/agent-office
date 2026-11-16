@@ -1,10 +1,12 @@
+import { resolve } from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 import { createApp } from './app';
 import { parseEnv, type Env } from './env';
 import { createLLMProvider, type LLMRouter } from './llm';
 import { describeModels, formatProblem, preflight, type PreflightProblem } from './llm/preflight';
 import { Orchestrator } from './orchestrator/orchestrator';
-import { ENV_FILE, TEAMS_DIR } from './paths';
+import { createJsonTaskStore } from './orchestrator/persistence';
+import { DEFAULT_TASKS_FILE, ENV_FILE, ROOT_DIR, TEAMS_DIR } from './paths';
 import { TeamRegistry, type TeamLoadError } from './teams/loader';
 
 loadDotenv({ path: ENV_FILE, quiet: true });
@@ -68,11 +70,25 @@ setInterval(() => {
 
 // The orchestrator's own timeout is only a safety net above the router's
 // per-provider timeouts and retries.
+// A relative TASKS_FILE is relative to the repo root, wherever the server was started.
+const tasksFile = env.TASKS_FILE ? resolve(ROOT_DIR, env.TASKS_FILE) : DEFAULT_TASKS_FILE;
 const orchestrator = new Orchestrator({
   llm,
   teams,
   timeoutMs: llm.maxTimeoutMs * (env.LLM_RETRIES + 1) + 60_000,
+  persistence: env.PERSIST_TASKS ? createJsonTaskStore(tasksFile) : undefined,
 });
+if (env.PERSIST_TASKS) {
+  const n = orchestrator.restoredCount;
+  console.log(`Tasks are saved in ${tasksFile}${n ? ` (${n} restored)` : ''}.`);
+}
+// Write the latest state before the process goes away.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    orchestrator.flush();
+    process.exit(0);
+  });
+}
 const app = createApp({ env, teams, orchestrator, problems: () => problems });
 
 // Express 5 passes listen errors (e.g. EADDRINUSE) to this callback instead of throwing.

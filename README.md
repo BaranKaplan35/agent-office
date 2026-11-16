@@ -68,7 +68,14 @@ npm run build
 npm start
 ```
 
-One server on port 3001 (or `PORT`) serves the API and the built client.
+One server on port 3001 (or `PORT`) serves the API and the built client. Tasks are saved
+in `data/tasks.json` and survive a restart (`PERSIST_TASKS=false` turns it off); work
+that a restart cut off shows "Try again". For a public demo in mock mode on Render, see
+[docs/DEPLOY.md](docs/DEPLOY.md).
+
+More: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the design (in Turkish) —
+the orchestrator and its state machine, the provider layer, the clarification step,
+why the 3D office is independent of the workflow, and the capture mode.
 
 ## How it works
 

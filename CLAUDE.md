@@ -96,7 +96,9 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
   missing), `limiter.ts`. The router adds `provider`, `model` and `durationMs` to every
   answer; the orchestrator stores them as `CallMetrics`
 - `server/src/orchestrator/orchestrator.ts` — task/subtask state machine, scheduling,
-  revisions, merge, cancel, timeouts, event publishing
+  revisions, merge, cancel, timeouts, event publishing; `persistence.ts` — tasks saved in
+  `data/tasks.json` (atomic, debounced), restored at startup with in-flight work marked
+  interrupted (retryable)
 - `server/src/orchestrator/prompts.ts` — plan / work / revision / merge prompts (the plan
   prompt lets the coordinator ask first; answers reach workers and the merge);
   `planParser.ts` — `parseCoordinatorAnswer` (plan or question round) and the plan
@@ -194,4 +196,4 @@ the current phase is finished, never mid-phase.
 - [ ] Polish — see the list at the end of `docs/PLAN.md`
 - [x] Phase 3a — LICENSE, GitHub Actions CI, third team (YouTube Video Studio, YAML only), "All done" buttons
 - [x] Phase 3b — full README, screenshots, GIF (capture mode), architecture diagram, add-a-team guide, prompt tuning
-- [ ] Phase 3c — JSON persistence, mock-mode demo on Render
+- [x] Phase 3c — JSON persistence, mock-mode demo on Render (`render.yaml`, `docs/DEPLOY.md`), `docs/ARCHITECTURE.md`

@@ -41,6 +41,12 @@ const EnvSchema = z
     // Ollama's own default window (4096) silently cuts long prompts, e.g. a worker that
     // gets its teammates' approved reports.
     OLLAMA_NUM_CTX: z.coerce.number().int().min(2048).max(262_144).default(16_384),
+    /** Keep tasks across restarts in a JSON file (`TASKS_FILE`, default data/tasks.json). */
+    PERSIST_TASKS: z
+      .enum(['true', 'false', '1', '0'])
+      .default('true')
+      .transform((v) => v === 'true' || v === '1'),
+    TASKS_FILE: optionalString,
     OPENROUTER_API_KEY: optionalString,
     OPENROUTER_MODEL: z.string().trim().min(1).default('openrouter/auto'),
   })

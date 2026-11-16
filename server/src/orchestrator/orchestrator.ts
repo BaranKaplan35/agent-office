@@ -14,6 +14,7 @@ import {
 import type { LLMProvider, LLMRequest, LLMResponse } from '../llm';
 import type { AnsweredClarification } from '../llm/types';
 import { defaultPlan, type PlanDraft } from '../teams/defaultPlan';
+import { INTERRUPTED, type PersistedTask, type TaskPersistence } from './persistence';
 import { PlanParseError, parseCoordinatorAnswer, type CoordinatorAnswer } from './planParser';
 import {
   buildMergeRequest,
@@ -46,9 +47,13 @@ export interface OrchestratorOptions {
   teams: TeamSource;
   /** Per model call. */
   timeoutMs?: number;
-  /** Finished tasks beyond this count are forgotten (memory only). */
+  /** Finished tasks beyond this count are forgotten. */
   maxTasks?: number;
   now?: () => Date;
+  /** Keep tasks across restarts (see `persistence.ts`); without it, memory only. */
+  persistence?: TaskPersistence;
+  /** Wait this long after a change before saving, so bursts are one write (ms). */
+  saveDelayMs?: number;
 }
 
 export const MAX_NOTE_LENGTH = 2000;
@@ -94,10 +99,99 @@ export class Orchestrator {
   private readonly maxTasks: number;
   private readonly now: () => Date;
 
+  private saveTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor(private readonly options: OrchestratorOptions) {
     this.timeoutMs = options.timeoutMs ?? 60_000;
     this.maxTasks = options.maxTasks ?? 50;
     this.now = options.now ?? (() => new Date());
+    if (options.persistence) this.restore(options.persistence.load());
+  }
+
+  // ---------------------------------------------------------------- persistence
+
+  /** How many tasks were restored from the saved file at startup. */
+  restoredCount = 0;
+
+  /** Write pending changes now (on shutdown). */
+  flush(): void {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = undefined;
+    if (!this.options.persistence) return;
+    const records: PersistedTask[] = [];
+    for (const [id, task] of this.tasks) {
+      const rt = this.runtimes.get(id);
+      if (!rt) continue;
+      records.push({
+        task,
+        team: rt.team,
+        messageSeq: rt.messageSeq,
+        lastNotes: Object.fromEntries([...rt.lastNotes].map(([k, v]) => [k, v ?? null])),
+        lastFinalNote: rt.lastFinalNote ?? null,
+      });
+    }
+    try {
+      this.options.persistence.save(records);
+    } catch (err) {
+      console.error('Saving tasks failed:', err);
+    }
+  }
+
+  private scheduleSave(): void {
+    if (!this.options.persistence || this.saveTimer) return;
+    this.saveTimer = setTimeout(() => this.flush(), this.options.saveDelayMs ?? 150);
+    this.saveTimer.unref?.();
+  }
+
+  /**
+   * Bring saved tasks back. Model calls that were in flight are gone, so that work is
+   * marked as failed with a clear message; the usual "Try again" continues it.
+   */
+  private restore(records: PersistedTask[]): void {
+    for (const record of records) {
+      const { task } = record;
+      this.tasks.set(task.id, task);
+      this.runtimes.set(task.id, {
+        team: record.team,
+        abort: new AbortController(),
+        messageSeq: record.messageSeq,
+        lastNotes: new Map(
+          Object.entries(record.lastNotes).map(([k, v]) => [k, v ?? undefined] as const),
+        ),
+        lastFinalNote: record.lastFinalNote ?? undefined,
+      });
+      if (TERMINAL.includes(task.status)) continue;
+      this.interrupt(task);
+    }
+    this.restoredCount = records.length;
+  }
+
+  private interrupt(task: Task): void {
+    const fail = (code: string, subtaskId?: string, revision = 0) =>
+      this.message(task, {
+        type: 'error',
+        ...(subtaskId ? { subtaskId } : {}),
+        from: 'system',
+        to: 'user',
+        revision,
+        payload: { code, message: INTERRUPTED, retryable: true },
+      });
+    if (task.status === 'planning') {
+      task.status = 'failed';
+      task.error = INTERRUPTED;
+      fail('planning_failed');
+    }
+    for (const sub of task.subtasks) {
+      if (sub.status !== 'working' && sub.status !== 'revising') continue;
+      sub.status = 'failed';
+      sub.error = INTERRUPTED;
+      fail('agent_failed', sub.id, sub.versions.length);
+    }
+    if (task.final && (task.final.status === 'merging' || task.final.status === 'revising')) {
+      task.final = { ...task.final, status: 'failed', error: INTERRUPTED };
+      fail('merge_failed', undefined, task.final.versions.length);
+    }
+    task.updatedAt = this.timestamp();
   }
 
   // ---------------------------------------------------------------- queries
@@ -148,6 +242,7 @@ export class Orchestrator {
       lastNotes: new Map(),
     });
     this.forgetOldTasks();
+    this.scheduleSave();
 
     void this.runPlanning(task);
     return structuredClone(task);
@@ -646,6 +741,7 @@ export class Orchestrator {
 
   private publish(task: Task, message?: AgentMessage): void {
     task.updatedAt = this.timestamp();
+    this.scheduleSave();
     const listeners = this.listeners.get(task.id);
     if (!listeners?.size) return;
     const snapshot = structuredClone(task);

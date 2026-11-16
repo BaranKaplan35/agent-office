@@ -8,3 +8,5 @@ export const ROOT_DIR = resolve(here, '..', '..');
 export const TEAMS_DIR = resolve(ROOT_DIR, 'teams');
 export const CLIENT_DIST_DIR = resolve(ROOT_DIR, 'client', 'dist');
 export const ENV_FILE = resolve(ROOT_DIR, '.env');
+/** Saved tasks (git-ignored). */
+export const DEFAULT_TASKS_FILE = resolve(ROOT_DIR, 'data', 'tasks.json');
