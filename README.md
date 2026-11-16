@@ -4,6 +4,10 @@
 
 [![CI](https://github.com/BaranKaplan35/agent-office/actions/workflows/ci.yml/badge.svg)](https://github.com/BaranKaplan35/agent-office/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/live_demo-mock_mode-0F766E.svg)](https://agent-office-demo.onrender.com)
+
+**[▶ Try the live demo](https://agent-office-demo.onrender.com)** — mock mode, no sign-up;
+the free server may need about a minute to wake up.
 
 ![The 3D office: the coordinator hands out the work, envelopes fly to the desks, reports come back for review](docs/media/office.gif)
 
