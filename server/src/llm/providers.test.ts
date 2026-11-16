@@ -66,6 +66,15 @@ describe('model resolution', () => {
     });
   });
 
+  it('mock mode ignores per-agent models, so a fresh clone needs no key and no Ollama', () => {
+    const mockEnv = parseEnv({ LLM_PROVIDER: 'mock' });
+    expect(resolveModel({ llm: { provider: 'ollama', model: 'qwen3.5:9b' } }, mockEnv)).toEqual({
+      provider: 'mock',
+      model: 'mock',
+    });
+    expect(parseEnv({}).LLM_PROVIDER).toBe('mock');
+  });
+
   it('answers work with the worker, plans and merges with the coordinator', () => {
     expect(agentForCall(work().meta).id).toBe('a');
     expect(agentForCall(plan().meta).id).toBe('lead');

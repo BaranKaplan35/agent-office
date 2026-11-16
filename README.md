@@ -14,27 +14,39 @@ questions and plans once you answer.
 > 🚧 Work in progress — the full README (screenshots, architecture, how to add a
 > team) arrives in phase 3.
 
-## Quick start
+## Getting started
 
 Requirements: Node.js 20.6+ (developed on Node 24).
+
+### Quick try (mock)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173. No API key is needed: the coordinators run as mock agents by
-default. The workers of both bundled teams run on a local [Ollama](https://ollama.com)
-model, so install Ollama and run `ollama pull qwen3.5:9b` first (without it, the app
-names the agents that can't run and the teams can't start).
+Open http://localhost:5173. Nothing else to set up: without a `.env` (or with
+`LLM_PROVIDER=mock`) every agent runs on the mock provider, including those that name
+their own model in the team file. The answers are canned, but the whole workflow
+works: questions, plans, reports, revisions, the final merge and the 3D office.
 
-To use a real model for the coordinators, copy `.env.example` to `.env` and set
-`LLM_PROVIDER` and the matching API key.
+### With real models
+
+1. Copy `.env.example` to `.env`.
+2. Set `LLM_PROVIDER` to the coordinators' provider, e.g. `gemini`, and its key
+   (`GEMINI_API_KEY`, free at https://aistudio.google.com/apikey).
+3. The workers of both bundled teams run on a local [Ollama](https://ollama.com) model:
+   install Ollama and run `ollama pull qwen3.5:9b`.
+4. `npm run dev`. At startup the server lists every agent's model and names anything
+   missing (key, Ollama not running, model not pulled).
+
+Any agent can use another provider; see the table and the mixed-team example below.
 
 ## Models and providers
 
 Every agent runs on a model. By default all agents use `LLM_PROVIDER` from `.env`
-with that provider's default model; any agent can pick its own in the team file.
+with that provider's default model; any agent can pick its own in the team file
+(ignored while `LLM_PROVIDER=mock`).
 
 | Provider     | Set in `.env`                             | Default model      | Cost                                   | Where your prompts go               |
 | ------------ | ----------------------------------------- | ------------------ | -------------------------------------- | ----------------------------------- |

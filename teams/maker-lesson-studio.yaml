@@ -8,6 +8,7 @@
 # (mock, gemini, anthropic, ollama, openrouter). Without it the .env default applies.
 # A mixed team: the coordinator (plan, questions, merge) uses the .env default
 # (Gemini), every worker a local Ollama model, which saves the cloud quota.
+# With LLM_PROVIDER=mock (the default) every agent is mock and these lines are ignored.
 
 id: maker-lesson-studio
 version: 1

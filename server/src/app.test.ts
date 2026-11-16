@@ -182,11 +182,11 @@ describe('clarification API', () => {
 });
 
 describe('model labels', () => {
-  it('every public agent names its resolved model', async () => {
+  it('in mock mode every agent is mock, even those with their own llm in the YAML', async () => {
     const teams = (await (await fetch(`${base}/teams`)).json()) as PublicTeam[];
-    const maker = teams.find((t) => t.id === 'maker-lesson-studio')!;
-    const quinn = maker.agents.find((a) => a.llm.provider === 'ollama');
-    expect(quinn?.llm.model).toBe('qwen3.5:9b');
-    expect(maker.agents.filter((a) => a.llm.provider === 'mock').length).toBeGreaterThan(0);
+    const agents = teams.flatMap((t) => t.agents);
+    expect(agents.length).toBeGreaterThan(0);
+    expect(agents.every((a) => a.llm.provider === 'mock' && a.llm.model === 'mock')).toBe(true);
+    expect(agents.every((a) => !a.unavailable)).toBe(true);
   });
 });

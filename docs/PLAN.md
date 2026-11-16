@@ -435,6 +435,9 @@ becomes blocking.
       Done after 2b: `POST /tasks/:id/plan/retry` (`retryPlanning`, only for a task
       that failed before it had a plan; prompt and answers are kept; the error message
       is now `retryable`); the task bar shows the reason and "Try again"
+- [x] Mock mode ignores per-agent `llm`: with `LLM_PROVIDER=mock` (the default, also in
+      `.env.example`) every agent is mock, so a fresh clone runs without a key or
+      Ollama. The README has two start paths: "Quick try (mock)" and "With real models"
 - [x] Model split after 2b (the Gemini free tier allows 20 requests a day): in both
       teams the coordinator stays on the `.env` default (`gemini-3.6-flash`) and every
       worker runs on `ollama / qwen3.5:9b`, so a task makes two or three cloud calls.

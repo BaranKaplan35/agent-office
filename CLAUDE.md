@@ -45,6 +45,8 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
    English is the default. `tr.json` is type-checked against `en.json`.
 7. **LLM output is untrusted.** Render Markdown with raw HTML disabled.
 8. **Mock mode must stay fully functional.** It is the default for dev and tests.
+   `LLM_PROVIDER=mock` (also the default without a `.env`) runs every agent on mock and
+   ignores per-agent `llm` (`resolveModel`), so a fresh clone needs no key and no Ollama.
 9. **Ports:** the API uses `SERVER_PORT` (default 3001); it only follows `PORT` in
    production, because dev tooling often sets `PORT` for the frontend.
 10. **The office art is procedural and original.** Every model is built in code from

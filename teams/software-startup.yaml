@@ -1,6 +1,6 @@
 # Software Startup — turns an app idea into a launch-ready plan.
 # A mixed team: the coordinator uses the .env default (Gemini), every worker a
-# local Ollama model (`ollama pull qwen3.5:9b`).
+# local Ollama model (`ollama pull qwen3.5:9b`). With LLM_PROVIDER=mock everyone is mock.
 
 id: software-startup
 version: 1
