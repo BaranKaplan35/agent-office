@@ -182,6 +182,17 @@ or sub-phase: stop, summarise simply what was done, and wait for the go-ahead be
 starting the next one. Plan changes are applied to `docs/PLAN.md` and this file once
 the current phase is finished, never mid-phase.
 
+### Branches and pull requests
+
+Never commit directly to `main`. For every piece of work:
+
+1. Create a branch from an up-to-date `main`, named after the work, e.g.
+   `polish/final-buttons`, `fix/…`, `docs/…`.
+2. When it is done, push the branch and open a pull request. The description says what
+   changed and how it was tested (commands run, what was checked in the app).
+3. Wait for CI to pass, then ask the user. Only after the user approves: merge the PR
+   and delete the branch (remote and local), then switch back to an updated `main`.
+
 ## Status
 
 - [x] Phase 0 — skeleton, tooling, shared types, palette, empty layout, i18n, health endpoint
