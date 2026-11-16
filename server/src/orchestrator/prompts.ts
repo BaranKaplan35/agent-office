@@ -20,15 +20,41 @@ export function wordBudget(maxOutputTokens: number): number {
   return Math.max(150, Math.floor((maxOutputTokens * 0.33) / 50) * 50);
 }
 
-/** Appended to every report-writing system prompt so team configs stay short. */
-function reportRules(lang: Lang, maxOutputTokens: number): string {
+/**
+ * Make sure the final document starts with its "# title" heading. Models sometimes
+ * put the summary first and the title below it, or leave the title out.
+ */
+export function ensureTitle(markdown: string, title: string): string {
+  const lines = markdown.trim().split('\n');
+  const isTitle = (line: string) =>
+    /^#\s+/.test(line) && line.replace(/^#\s+/, '').trim() === title;
+  if (lines[0] !== undefined && isTitle(lines[0])) return lines.join('\n');
+  const at = lines.findIndex(isTitle);
+  if (at >= 0) lines.splice(at, 1);
+  const body = lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return `# ${title}\n\n${body}`;
+}
+
+/**
+ * Appended to every report-writing system prompt so team configs stay short.
+ * With `title` (the final merge), the document starts with that heading.
+ */
+function reportRules(lang: Lang, maxOutputTokens: number, title?: string): string {
+  const opening = title
+    ? `- Start with the heading "# ${title}", then one or two plain sentences that summarise the document, then use "##" headings for the sections.`
+    : `- Begin with one or two plain sentences that summarise the result (no heading before them), then use "##" headings for the sections.`;
   return `
 ---
 Output rules (from the AgentOffice system):
 - Write the entire report in ${LANGUAGE_NAMES[lang]}.
 - Use GitHub-flavoured Markdown. Put code in fenced code blocks. Never use raw HTML.
-- Begin with one or two plain sentences that summarise the result (no heading before them), then use "##" headings for the sections.
+${opening}
+- Start directly with the result: no lead-ins such as "Here is", "İşte" or "This report".
 - No greetings, no meta commentary, no questions at the end. If something is unclear, list it under an "Open questions" section.
+- Only include facts and tips you are sure of; put anything uncertain under "Open questions" instead of guessing.
 - Keep the whole document under about ${wordBudget(maxOutputTokens)} words: it is cut off at ${maxOutputTokens} tokens. Prefer short lists and tables to long prose.`;
 }
 
@@ -215,9 +241,8 @@ export function buildMergeRequest(input: MergeRequestInput): LLMRequest {
   const system = `${coordinator.systemPrompt}
 ---
 You are now MERGING. Combine the approved reports into one coherent final document titled "${finalTitle}".
-- Start the document with "# ${finalTitle}" and a short overview.
 - Keep every essential detail (code, tables, materials, numbers). Remove duplication and fix inconsistencies between sections.
-- Organise it for the reader, not by team member.${reportRules(lang, maxOutputTokens)}`;
+- Organise it for the reader, not by team member.${reportRules(lang, maxOutputTokens, finalTitle)}`;
 
   const brief = taskBlock(task, clarifications) + sourcesBlock('Approved reports', sources, lang);
   const messages: ChatMessage[] = [{ role: 'user', content: brief }];

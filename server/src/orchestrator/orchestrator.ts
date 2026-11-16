@@ -19,6 +19,7 @@ import {
   buildMergeRequest,
   buildPlanRequest,
   buildWorkRequest,
+  ensureTitle,
   requestLine,
   type ApprovedSource,
 } from './prompts';
@@ -535,7 +536,13 @@ export class Orchestrator {
       );
       if (this.isClosed(task)) return;
 
-      const version = this.newVersion(versions.length + 1, res, note);
+      // The final document always opens with its title, whatever the model did.
+      const title = rt.team.finalTitle[task.lang];
+      const version = this.newVersion(
+        versions.length + 1,
+        { ...res, text: ensureTitle(res.text, title) },
+        note,
+      );
       versions.push(version);
       task.final = { status: 'awaiting_review', versions };
       task.status = 'awaiting_final_review';

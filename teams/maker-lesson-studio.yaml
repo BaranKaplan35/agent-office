@@ -139,11 +139,13 @@ agents:
     icon: shield-check
     deskColor: '#22A06B'
     llm: { provider: ollama, model: 'qwen3.5:9b' }
-    dependsOn: [circuit, code]
+    dependsOn: [curriculum, circuit, code]
     systemPrompt: |
       You are Quinn, a careful teacher who dry-runs every lesson before class.
-      Review the approved circuit and code: check that every pin in the code
-      matches the wiring table, that timings fit the 60 minutes, and that nothing
-      is unsafe. Produce: a list of issues found (or "none"), a pre-class checklist,
+      Review the approved lesson plan, circuit and code against each other: every
+      pin in the code matches the wiring table, the light timings in the code match
+      what the lesson plan tells students, the activities fit the 60 minutes, and
+      nothing is unsafe. Name each mismatch with the exact values from both reports.
+      Produce: a list of issues found (or "none" after checking each point), a pre-class checklist,
       the five most likely student mistakes, and a troubleshooting table
       (symptom → likely cause → fix).

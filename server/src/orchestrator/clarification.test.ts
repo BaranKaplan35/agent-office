@@ -4,7 +4,14 @@ import type { LLMRequest } from '../llm';
 import { needsDetails } from '../llm/mock';
 import { instantMock, scripted, setup, testTeam, waitFor } from '../test/fixtures';
 import { parseCoordinatorAnswer, PlanParseError } from './planParser';
-import { buildPlanRequest, buildWorkRequest, requestLine, wordBudget } from './prompts';
+import {
+  buildMergeRequest,
+  buildPlanRequest,
+  buildWorkRequest,
+  ensureTitle,
+  requestLine,
+  wordBudget,
+} from './prompts';
 
 const team = testTeam();
 const clarify = (reply: string, questions: string[]) =>
@@ -270,5 +277,61 @@ describe('report length', () => {
       sources: [],
     });
     expect(req.system).toContain('under about 300 words');
+  });
+});
+
+describe('final document title', () => {
+  it('keeps a title that is already first', () => {
+    expect(ensureTitle('# Lesson Pack\n\nText', 'Lesson Pack')).toBe('# Lesson Pack\n\nText');
+  });
+
+  it('moves a title that came after the summary to the top', () => {
+    expect(ensureTitle('Summary first.\n\n# Lesson Pack\n\n## Part', 'Lesson Pack')).toBe(
+      '# Lesson Pack\n\nSummary first.\n\n## Part',
+    );
+  });
+
+  it('adds a missing title', () => {
+    expect(ensureTitle('Summary.\n\n## Part', 'Girişim Planı')).toBe(
+      '# Girişim Planı\n\nSummary.\n\n## Part',
+    );
+  });
+
+  it('asks the merge for the title first and every report for no lead-ins', () => {
+    const merge = buildMergeRequest({ team, task: 't', lang: 'en', sources: [] });
+    expect(merge.system).toContain('Start with the heading "# Final Pack"');
+    expect(merge.system).not.toContain('no heading before them');
+    const work = buildWorkRequest({
+      team,
+      agent: team.agents[1]!,
+      task: 't',
+      lang: 'en',
+      title: 'T',
+      instructions: 'I',
+      sources: [],
+    });
+    expect(work.system).toContain('no lead-ins');
+    expect(work.system).toContain('no heading before them');
+  });
+
+  it('the merged final always opens with the team title', async () => {
+    const llm = scripted(instantMock(), (req) =>
+      req.meta.kind === 'merge' ? Promise.resolve({ text: 'Summary.\n\n## Section' }) : undefined,
+    );
+    const { orchestrator, create } = setup({ llm });
+    const { id } = create();
+    for (let i = 0; i < 6; i++) {
+      const t = await waitFor(
+        orchestrator,
+        id,
+        (x) => x.subtasks.some((s) => s.status === 'awaiting_review') || !!x.final,
+      );
+      if (t.final) break;
+      for (const s of t.subtasks.filter((s) => s.status === 'awaiting_review')) {
+        orchestrator.approve(id, s.id);
+      }
+    }
+    const done = await waitFor(orchestrator, id, (t) => t.status === 'awaiting_final_review');
+    expect(done.final!.versions[0]!.markdown.startsWith('# Final Pack\n\nSummary.')).toBe(true);
   });
 });

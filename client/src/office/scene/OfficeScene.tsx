@@ -18,6 +18,7 @@ import {
   type Selection,
 } from '../../state/selectors';
 import { modelLabel } from '../../state/metrics';
+import { CAPTURE, sceneNow } from '../capture';
 import { isDeskWork } from '../characters/activities';
 import { Envelopes } from '../effects/Envelopes';
 import { FlightBoard, flightsFor, MessageWatcher } from '../effects/flights';
@@ -32,6 +33,7 @@ import { StaticBatch } from '../models/StaticBatch';
 import { profileFor, useQuality, useQualityLevel } from '../quality';
 import { FOCUS_HEIGHT } from './camera';
 import { CameraRig, type CameraHandle } from './CameraRig';
+import { CaptureDriver } from './CaptureDriver';
 import { daylight } from './daylight';
 import { Lighting } from './Lighting';
 import { useScenePalette } from './palette';
@@ -110,7 +112,7 @@ export default function OfficeScene({
     const fresh = watcher.take(task);
     if (fresh.length === 0) return;
     const colorOf = (id: string) => team.agents.find((a) => a.id === id)?.deskColor ?? '#ffffff';
-    board.add(flightsFor(fresh, layout, colorOf, performance.now() / 1000));
+    board.add(flightsFor(fresh, layout, colorOf, sceneNow()));
   }, [task, layout, team.agents, watcher, board]);
 
   // Name tags are plain DOM; the projector keeps them glued to these 3D points.
@@ -172,9 +174,12 @@ export default function OfficeScene({
         shadows={profile.shadows ? 'percentage' : false}
         dpr={profile.dpr}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        // Capture mode (README GIF): frames advance only when the recorder steps them.
+        frameloop={CAPTURE ? 'never' : 'always'}
         camera={{ position: [40, 40, 40], zoom: 40, near: 0.1, far: 180 }}
       >
-        {autoMode && <PerformanceMonitor onDecline={lowerAutoLevel} />}
+        {autoMode && !CAPTURE && <PerformanceMonitor onDecline={lowerAutoLevel} />}
+        {CAPTURE && <CaptureDriver />}
         <ToneMapping />
         <CameraRig
           handle={setCamera}

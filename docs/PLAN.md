@@ -435,11 +435,30 @@ on Render are in; the plan-approval step moved to Polish.
 - Polish item done: the "All done" panel has "View final" and "Download .md"
   (`approvedFinal` selector; `panels/download.ts` shared with the report viewer)
 
-### 3b — README and visuals
+### 3b — README and visuals ✅
 
-- Full README with GIF of the 3D office, screenshots (day / evening), architecture
-  diagram, "add a team in one file" guide
-- Prompt tuning for the templates with real models while taking the screenshots
+- **README** rewritten: what it is, features, start paths (mock / real models /
+  production), how it works (5 steps + Mermaid sequence diagram), architecture
+  (Mermaid flowchart), "add a team in one file" with an example YAML (checked against
+  the schema) and a field table, providers, the office, scripts, tech, media how-to
+- **Media** in `docs/media`, all made by `scripts/capture/media.mjs` (headless Chrome over
+  the DevTools Protocol, Node built-ins only, throw-away profile, random debug port):
+  `office-day.png` (light theme, `?hour=11`), `office-evening.png` (dark, `?hour=19.5`),
+  `clarification.png` ("hi" → questions), `report.png` (a real Ollama report with its
+  metrics line), `office.gif` (960×679, 15 s, 15 fps, 1.5 MB)
+- **Capture mode** `?capture=1` (`office/capture.ts`, `scene/CaptureDriver.tsx`): the
+  Canvas runs with `frameloop="never"`; each `window.__officeCapture.step()` advances the
+  R3F clock, the scene time (`sceneNow()`, used by envelopes and goals instead of
+  `performance.now()`) and every CSS animation by exactly 1/15 s. The live stream is off;
+  a task timeline recorded from a mock run is replayed by scene time, so the GIF looks
+  the same however slowly frames are captured. GIF via ffmpeg (palettegen/paletteuse)
+- **Prompt tuning** with one real task per team (coordinator `gemini-3.6-flash`, workers
+  `ollama / qwen3.5:9b`; about 3.5–5 min per task): the final document now starts with its
+  title (the old rules contradicted each other; `ensureTitle` also fixes it on the
+  server); report rules forbid lead-ins ("Here is", "İşte") and guessed tips; Quinn
+  (Maker Lesson Studio) now also gets the lesson plan and compares its timings with the
+  code, and found a real mismatch in the rerun. Left as they are: the 9B model still
+  opens some reports with "Here is…" and makes small Turkish spelling mistakes
 
 ### 3c — Persistence and demo
 

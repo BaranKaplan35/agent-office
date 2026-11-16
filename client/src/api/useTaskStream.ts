@@ -1,5 +1,6 @@
 import type { TaskEvent } from '@agent-office/shared';
 import { useEffect } from 'react';
+import { CAPTURE } from '../office/capture';
 import { isTaskActive } from '../state/selectors';
 import { useApp } from '../state/store';
 import { api, ApiRequestError } from './client';
@@ -20,7 +21,8 @@ export function useTaskStream(): void {
   const active = useApp((s) => isTaskActive(s.task) || (s.taskId !== null && s.task === null));
 
   useEffect(() => {
-    if (!taskId || !active) return;
+    // Capture mode plays a recorded timeline instead (see office/capture.ts).
+    if (CAPTURE || !taskId || !active) return;
     const { applyEvent, setStream, taskLost } = useApp.getState();
 
     let source: EventSource | null = null;

@@ -11,6 +11,7 @@ import {
   type Mesh,
   type Sprite,
 } from 'three';
+import { sceneNow } from '../capture';
 import { envelopeFrame, type FlightBoard } from './flights';
 
 /** Envelopes drawn at the same time; more than this simply wait their turn. */
@@ -110,7 +111,7 @@ export function Envelopes({ board, reduced, shadows }: Props) {
   useEffect(() => () => slots.forEach(disposeSlot), [slots]);
 
   useFrame(() => {
-    const now = performance.now() / 1000;
+    const now = sceneNow();
     const flights = board.active(now, reduced);
     slots.forEach((slot, i) => {
       const flight = flights[i];

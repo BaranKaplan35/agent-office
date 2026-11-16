@@ -147,6 +147,11 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
     reduced motion); characters never read React context and never decide anything themselves
   - Scene components never read React context: the stage passes translated text as props
 - `client/src/styles/tokens.css` — "Daylight Studio" colour tokens (light + dark)
+- `client/src/office/capture.ts` + `scene/CaptureDriver.tsx` — `?capture=1`: deterministic
+  frame stepping for the README GIF; scene code must read time via `sceneNow()` (or the R3F
+  clock), never `performance.now()` / `Date.now()`, or the capture drifts
+- `scripts/capture/` — `cdp.mjs` (tiny DevTools Protocol client) and `media.mjs` (README
+  screenshots, timeline recording, GIF frames → ffmpeg); output in `docs/media/`
 
 ## API (all JSON, prefix `/api`)
 
@@ -188,5 +193,5 @@ the current phase is finished, never mid-phase.
 - [x] Phase 2b — model labels on desks/reports, per-report tokens + duration, task totals, clarification step, mixed-team README example
 - [ ] Polish — see the list at the end of `docs/PLAN.md`
 - [x] Phase 3a — LICENSE, GitHub Actions CI, third team (YouTube Video Studio, YAML only), "All done" buttons
-- [ ] Phase 3b — full README, screenshots, GIF, architecture diagram, add-a-team guide
+- [x] Phase 3b — full README, screenshots, GIF (capture mode), architecture diagram, add-a-team guide, prompt tuning
 - [ ] Phase 3c — JSON persistence, mock-mode demo on Render

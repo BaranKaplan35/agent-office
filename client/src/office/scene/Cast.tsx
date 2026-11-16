@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import { Vector3 } from 'three';
 import type { AgentActivity } from '../../state/selectors';
+import { sceneNow } from '../capture';
 import { calmGoalFor, goalFor, isDeskWork } from '../characters/activities';
 import { appearanceFor, hashString } from '../characters/appearance';
 import { CharacterBrain } from '../characters/brain';
@@ -156,7 +157,7 @@ export function Cast({
   // Goals are applied every frame, because an envelope landing (not a React
   // render) is what releases a worker to go to the desk.
   useFrame(({ camera, size }, delta) => {
-    const now = performance.now() / 1000;
+    const now = sceneNow();
     const arriving: string[] = [];
     for (const entry of latest.current) {
       const id = entry.agent.id;
