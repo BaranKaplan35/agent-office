@@ -14,6 +14,7 @@ import {
 import type { LLMProvider, LLMRequest, LLMResponse } from '../llm';
 import type { AnsweredClarification } from '../llm/types';
 import { defaultPlan, type PlanDraft } from '../teams/defaultPlan';
+import { trimLeadIn } from './leadIn';
 import { INTERRUPTED, type PersistedTask, type TaskPersistence } from './persistence';
 import { PlanParseError, parseCoordinatorAnswer, type CoordinatorAnswer } from './planParser';
 import {
@@ -697,7 +698,8 @@ export class Orchestrator {
   }
 
   private newVersion(version: number, res: MeasuredResponse, note?: string): ReportVersion {
-    const markdown = res.text.trim();
+    // Small models open with "Here is …" despite the rules; keep the rest of the sentence.
+    const markdown = trimLeadIn(res.text.trim());
     if (!markdown) throw new Error('The model returned an empty answer');
     return {
       version,
