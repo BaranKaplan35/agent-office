@@ -205,6 +205,13 @@ export function requestText(task: Task): string {
   );
 }
 
+/** The approved final document, once the user approved it. */
+export function approvedFinal(task: Task | null): ReportVersion | undefined {
+  const final = task?.final;
+  if (final?.approvedVersion === undefined) return undefined;
+  return final.versions.find((v) => v.version === final.approvedVersion);
+}
+
 /** Planning failed before there was a plan: the task can be planned again. */
 export function planningFailed(task: Task | null): boolean {
   return task?.status === 'failed' && task.subtasks.length === 0;

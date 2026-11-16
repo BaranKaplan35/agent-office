@@ -2,6 +2,7 @@
   "name": "agent-office",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "An isometric AI office where a coordinator agent splits your task across a configurable team and you approve every report.",
   "type": "module",
   "workspaces": [

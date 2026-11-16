@@ -417,12 +417,34 @@ Done as planned, plus a clarification step added at the start of the phase:
 
 ## Phase 3 — GitHub and portfolio
 
+The repo lives at `github.com/BaranKaplan35/agent-office`, private until Phase 3 is
+finished (then made public). Commits use the GitHub noreply address. Decided at the
+start of the phase: the third team is a "YouTube Video Studio"; the GIF is recorded by
+hand with ScreenToGif (3b says what to record); JSON persistence and a mock-mode demo
+on Render are in; the plan-approval step moved to Polish.
+
+### 3a — Repo basics ✅
+
+- `LICENSE` (MIT) and `"license": "MIT"` in the root `package.json`
+- GitHub Actions `.github/workflows/ci.yml`: on pushes to `main` and on pull requests,
+  Node 22 and 24, `npm ci` → Prettier check → lint → typecheck → test (mock) → build
+- Third team `teams/youtube-video-studio.yaml`, YAML only: Juno (producer, coordinator),
+  Ravi (research) → Lina (script) → Tomo (thumbnail & title ideas) and Eda (edit plan);
+  workers on `ollama / qwen3.5:9b` like the other teams. Icons and look came from the
+  existing fallbacks; the only test change was making the team-list assertion open-ended
+- Polish item done: the "All done" panel has "View final" and "Download .md"
+  (`approvedFinal` selector; `panels/download.ts` shared with the report viewer)
+
+### 3b — README and visuals
+
 - Full README with GIF of the 3D office, screenshots (day / evening), architecture
   diagram, "add a team in one file" guide
-- LICENSE (MIT), GitHub Actions (lint, typecheck, test, build)
-- A third team template, added as YAML only
-- Optional plan-approval step (approve the coordinator's subtask list before work starts)
-- Optional: JSON-file persistence, deploy (Render / Fly.io)
+- Prompt tuning for the templates with real models while taking the screenshots
+
+### 3c — Persistence and demo
+
+- JSON-file persistence of tasks
+- Deploy a mock-mode demo on Render (step-by-step guide for the user), last
 
 ## Polish (left for the end)
 
@@ -446,6 +468,7 @@ becomes blocking.
       2048-token cap mid-sentence, so the report rules now give a word budget
       (`wordBudget`: about a third of the token limit)
 
-- [ ] When a task is completed, the "All done" screen in the right panel offers
-      "View final" and "Download .md" buttons directly (today you have to open the
-      coordinator's desk first)
+- [x] When a task is completed, the "All done" screen in the right panel offers
+      "View final" and "Download .md" buttons directly (done in 3a)
+- [ ] Optional plan-approval step: approve the coordinator's subtask list before work
+      starts (moved here from Phase 3)

@@ -2,6 +2,7 @@ import type { PublicTeam, ReportVersion, Subtask, Task } from '@agent-office/sha
 import { describe, expect, it } from 'vitest';
 import {
   activityTone,
+  approvedFinal,
   agentActivity,
   exportFilename,
   failedItems,
@@ -128,6 +129,19 @@ describe('clarification', () => {
     expect(agentActivity(t, team.agents[1]!)).toBe('idle');
     expect(activityTone('asking')).toBe('review');
     expect(isTaskActive(t)).toBe(true);
+  });
+
+  it('approvedFinal is the approved version of the final output', () => {
+    const final = {
+      status: 'approved' as const,
+      versions: [version(1, '2026-01-01T00:00:01Z'), version(2, '2026-01-01T00:00:02Z')],
+      approvedVersion: 2,
+    };
+    expect(approvedFinal(task({ status: 'completed', final }))?.markdown).toBe('v2');
+    expect(
+      approvedFinal(task({ final: { status: 'awaiting_review', versions: final.versions } })),
+    ).toBeUndefined();
+    expect(approvedFinal(null)).toBeUndefined();
   });
 
   it('planningFailed is a failed task without a plan', () => {

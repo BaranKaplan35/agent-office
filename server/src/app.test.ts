@@ -70,7 +70,10 @@ describe('API basics', () => {
 describe('teams API', () => {
   it('lists public teams without prompts', async () => {
     const teams = (await (await fetch(`${base}/teams`)).json()) as PublicTeam[];
-    expect(teams.map((t) => t.id).sort()).toEqual(['maker-lesson-studio', 'software-startup']);
+    // Every YAML in teams/ is served; adding a team needs no code or test change.
+    expect(teams.map((t) => t.id)).toEqual(
+      expect.arrayContaining(['maker-lesson-studio', 'software-startup', 'youtube-video-studio']),
+    );
     expect(JSON.stringify(teams)).not.toContain('systemPrompt');
     expect((await fetch(`${base}/teams/ghost`)).status).toBe(404);
   });

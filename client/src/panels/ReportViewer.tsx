@@ -14,6 +14,7 @@ import {
 } from '../state/selectors';
 import { formatDuration, formatTokens, modelLabel } from '../state/metrics';
 import { useApp, useCurrentTeam } from '../state/store';
+import { downloadMarkdown } from './download';
 import { TaskTotals } from './TaskTotals';
 
 const MAX_NOTE = 2000;
@@ -37,15 +38,6 @@ const STATE_LABEL = {
   approved: 'activity.approved',
   failed: 'activity.failed',
 } as const;
-
-function downloadMarkdown(filename: string, markdown: string) {
-  const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function ReportViewer() {
   const { t, lang } = useI18n();

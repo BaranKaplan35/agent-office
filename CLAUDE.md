@@ -16,6 +16,9 @@ output. Portfolio project: optimise for clarity, small dependencies and a polish
 
 ## Commands
 
+CI (`.github/workflows/ci.yml`, Node 22 + 24) runs `npx prettier --check .`, lint,
+typecheck, test and build; keep all five green before committing.
+
 - `npm install` — install all workspaces
 - `npm run dev` — API (port 3001) + Vite (port 5173, proxies `/api`)
 - `npm test` — all tests · `npm run lint` · `npm run typecheck`
@@ -81,7 +84,8 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
 - `shared/src/types.ts` — teams, tasks, subtasks, messages, API/SSE shapes
 - `server/src/env.ts` — environment parsing (one readable error for all problems)
 - `server/src/app.ts` — Express app factory (`createApp({ env, teams, orchestrator })`, used by tests)
-- `teams/*.yaml` — team templates; `server/src/teams/` — zod schema, loader/registry
+- `teams/*.yaml` — team templates (Maker Lesson Studio, Software Startup, YouTube Video
+  Studio); `server/src/teams/` — zod schema, loader/registry
   (hot reload in dev), `defaultPlan.ts` (one subtask per worker along `dependsOn`)
 - `server/src/llm/` — `index.ts` (the router: agent → provider + model, per-provider
   concurrency, timeout and retries), `resolve.ts` (model resolution, pure), `providers/`
@@ -166,7 +170,7 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
 
 ## Working agreement
 
-Work proceeds phase by phase (1c in four sub-phases, 2 in two). At the end of each phase
+Work proceeds phase by phase (1c in four sub-phases, 2 in two, 3 in three). At the end of each phase
 or sub-phase: stop, summarise simply what was done, and wait for the go-ahead before
 starting the next one. Plan changes are applied to `docs/PLAN.md` and this file once
 the current phase is finished, never mid-phase.
@@ -183,4 +187,6 @@ the current phase is finished, never mid-phase.
 - [x] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
 - [x] Phase 2b — model labels on desks/reports, per-report tokens + duration, task totals, clarification step, mixed-team README example
 - [ ] Polish — see the list at the end of `docs/PLAN.md`
-- [ ] Phase 3 — README, CI, third config-only template, optional plan approval, deploy
+- [x] Phase 3a — LICENSE, GitHub Actions CI, third team (YouTube Video Studio, YAML only), "All done" buttons
+- [ ] Phase 3b — full README, screenshots, GIF, architecture diagram, add-a-team guide
+- [ ] Phase 3c — JSON persistence, mock-mode demo on Render

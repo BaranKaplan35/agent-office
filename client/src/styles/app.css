@@ -1756,3 +1756,10 @@ button.queue-item:hover {
   margin: 2px 0 0;
   overflow-wrap: anywhere;
 }
+
+/* "All done": open or download the approved final right away. */
+.done-actions {
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}

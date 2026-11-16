@@ -2,12 +2,16 @@ import { AgentAvatar } from '../components/AgentAvatar';
 import { useI18n } from '../i18n/context';
 import { HelpCircle } from 'lucide-react';
 import {
+  approvedFinal,
   coordinatorOf,
+  exportFilename,
   failedItems,
   findAgent,
   openClarification,
+  requestText,
   reviewQueue,
 } from '../state/selectors';
+import { downloadMarkdown } from './download';
 import { TASK_INPUT_ID } from './TaskInput';
 import { useApp, useCurrentTeam } from '../state/store';
 
@@ -23,10 +27,25 @@ export function ReviewQueue() {
   const failed = failedItems(task, team);
 
   if (task?.status === 'completed') {
+    const final = approvedFinal(task);
     return (
       <div className="empty-state">
         <h3>{t('queue.completedTitle')}</h3>
         <p>{t('queue.completedBody')}</p>
+        {final && (
+          <div className="action-row done-actions">
+            <button type="button" className="btn-primary" onClick={() => select({ kind: 'final' })}>
+              {t('queue.viewFinal')}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => downloadMarkdown(exportFilename(requestText(task)), final.markdown)}
+            >
+              {t('queue.downloadFinal')}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
