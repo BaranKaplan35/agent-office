@@ -70,6 +70,8 @@ export interface LLMResponse {
   text: string;
   /** Absent when the provider reported no token counts. */
   usage?: TokenUsage;
+  /** True when the model stopped at the output-token limit (the end may be missing). */
+  truncated?: boolean;
   /** Filled in by the router: the model that answered and how long it took. */
   provider?: LLMProviderName;
   model?: string;

@@ -102,6 +102,7 @@
   "report.export": "Export .md",
   "report.copy": "Copy",
   "report.copied": "Copied",
+  "report.truncated": "This version stopped at the length limit, so its end may be missing. Ask for a shorter revision, or raise settings.maxOutputTokens in the team file.",
   "report.metrics": "Model, tokens and time of this version",
   "report.tokenCounts": "{{input}} in / {{output}} out",
   "report.tokensUnknown": "tokens —",

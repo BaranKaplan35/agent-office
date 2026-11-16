@@ -1763,3 +1763,13 @@ button.queue-item:hover {
   flex-wrap: wrap;
   margin-top: 12px;
 }
+
+/* A report that stopped at the output-token limit. */
+.truncated-note {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--line));
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  font-size: 13px;
+}

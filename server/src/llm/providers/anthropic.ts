@@ -21,6 +21,7 @@ export interface AnthropicMessages {
   ): Promise<{
     content: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
     usage?: { input_tokens?: number; output_tokens?: number };
+    stop_reason?: string | null;
   }>;
 }
 
@@ -96,6 +97,7 @@ export function createAnthropicProvider(options: AnthropicOptions): LLMProvider 
       return {
         text,
         usage: toUsage(res.usage?.input_tokens, res.usage?.output_tokens),
+        ...(res.stop_reason === 'max_tokens' ? { truncated: true } : {}),
       };
     },
   };

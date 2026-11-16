@@ -132,6 +132,8 @@ export interface ReportVersion {
   /** The user's note that triggered this version (absent for v1). */
   revisionNote?: string;
   metrics?: CallMetrics;
+  /** The model stopped at the output-token limit, so the end may be missing. */
+  truncated?: boolean;
 }
 
 /**
