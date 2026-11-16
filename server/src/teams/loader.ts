@@ -1,7 +1,7 @@
 import { watch } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { PublicTeam, TeamConfig } from '@agent-office/shared';
+import type { AgentConfig, PublicTeam, ResolvedLLM, TeamConfig } from '@agent-office/shared';
 import { parse as parseYaml } from 'yaml';
 import { validateTeam } from './schema';
 
@@ -67,15 +67,22 @@ export async function loadTeamsFromDir(dir: string): Promise<TeamLoadResult> {
  * Team as sent to the browser: system prompts and mock data stay on the server.
  * `unavailable` maps agent ids to the reason their model can't be used right now.
  */
-export function toPublicTeam(
-  team: TeamConfig,
-  unavailable: ReadonlyMap<string, string> = new Map(),
-): PublicTeam {
+export interface PublicTeamOptions {
+  /** The model each agent runs on (agent's own `llm` or the `.env` default). */
+  resolve: (agent: AgentConfig) => ResolvedLLM;
+  /** Agent id → why its model can't be used right now. */
+  unavailable?: ReadonlyMap<string, string>;
+}
+
+export function toPublicTeam(team: TeamConfig, options: PublicTeamOptions): PublicTeam {
+  const unavailable = options.unavailable ?? new Map<string, string>();
   return {
     ...team,
-    agents: team.agents.map(({ systemPrompt: _s, mockResponse: _m, ...agent }) => {
+    // Prompts, mock data and the raw `llm` stay here; the resolved model goes out.
+    agents: team.agents.map(({ systemPrompt: _s, mockResponse: _m, llm: _l, ...agent }, i) => {
       const reason = unavailable.get(agent.id);
-      return reason ? { ...agent, unavailable: reason } : agent;
+      const llm = options.resolve(team.agents[i]!);
+      return reason ? { ...agent, llm, unavailable: reason } : { ...agent, llm };
     }),
   };
 }

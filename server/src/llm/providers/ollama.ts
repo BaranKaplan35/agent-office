@@ -5,6 +5,7 @@
  */
 import { LLMError } from '../errors';
 import { PLAN_JSON_SCHEMA } from '../planSchema';
+import { toUsage } from '../usage';
 import type { LLMProvider, LLMRequest, LLMResponse } from '../types';
 import { postJson, type FetchLike } from './http';
 
@@ -73,7 +74,7 @@ export function createOllamaProvider(options: OllamaOptions): LLMProvider {
       }
       return {
         text: data.message?.content ?? '',
-        usage: { inputTokens: data.prompt_eval_count ?? 0, outputTokens: data.eval_count ?? 0 },
+        usage: toUsage(data.prompt_eval_count, data.eval_count),
       };
     },
   };

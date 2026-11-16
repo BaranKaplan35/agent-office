@@ -17,6 +17,7 @@ import {
   selectionForAgent,
   type Selection,
 } from '../../state/selectors';
+import { modelLabel } from '../../state/metrics';
 import { isDeskWork } from '../characters/activities';
 import { Envelopes } from '../effects/Envelopes';
 import { FlightBoard, flightsFor, MessageWatcher } from '../effects/flights';
@@ -48,6 +49,8 @@ export interface OfficeSceneProps {
   lang: Lang;
   selection: Selection | null;
   onSelect: (selection: Selection) => void;
+  /** The coordinator asked before planning: its bubble leads to the answer box. */
+  onAnswer?: () => void;
   /** Reduced motion: no wandering or loops, fades instead of flights, instant camera. */
   reduced: boolean;
   /** Lets the stage reset the camera (button, Esc). */
@@ -59,6 +62,7 @@ export interface OfficeSceneProps {
     canvas: string;
     status: (activity: SceneActivity) => string;
     open: (agentName: string) => string;
+    answer: (agentName: string) => string;
   };
 }
 
@@ -68,6 +72,7 @@ export default function OfficeScene({
   lang,
   selection,
   onSelect,
+  onAnswer,
   reduced,
   cameraRef,
   onViewMoved,
@@ -139,7 +144,9 @@ export default function OfficeScene({
               onSelect(target);
               camera.current?.focus([slot.x, FOCUS_HEIGHT, slot.z]);
             }
-          : undefined,
+          : activity === 'asking'
+            ? onAnswer
+            : undefined,
       },
     ];
   });
@@ -256,7 +263,10 @@ export default function OfficeScene({
             activity={shown}
             tone={tone}
             status={texts.status(shown)}
-            openLabel={texts.open(agent.name[lang])}
+            openLabel={
+              shown === 'asking' ? texts.answer(agent.name[lang]) : texts.open(agent.name[lang])
+            }
+            model={modelLabel(agent.llm)}
             selected={selected}
             onOpen={open}
             register={(el) => {

@@ -17,7 +17,50 @@ export interface MockOptions {
 
 /** Calls whose agent may still be on the way to the desk. */
 export function needsWalkIn(meta: LLMCallMeta): boolean {
-  return meta.kind === 'plan' || (meta.kind === 'work' && !meta.revision);
+  if (meta.kind === 'plan') return meta.clarifications.length === 0;
+  return meta.kind === 'work' && !meta.revision;
+}
+
+/** Messages that are small talk, not a task, in either language. */
+const SMALL_TALK = new Set(
+  (
+    'hi hello hey yo hiya howdy sup ok okay thanks thank you test testing ping help good ' +
+    'morning evening how are what up there everyone team all selam selamlar slm merhaba ' +
+    'merhabalar mrb sa as naber nasılsın nasilsin günaydın gunaydin iyi akşamlar aksamlar ' +
+    'teşekkürler tamam deneme yardım yardim kolay gelsin '
+  )
+    .trim()
+    .split(' '),
+);
+
+/**
+ * The mock coordinator's stand-in for judgement (pure): a message needs details
+ * when it is only small talk or too short to be a task ("selam", "hi there",
+ * "logo"). A real model decides this itself from the plan prompt.
+ */
+export function needsDetails(text: string): boolean {
+  const words = text
+    .toLocaleLowerCase('tr')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return true;
+  if (words.every((w) => SMALL_TALK.has(w))) return true;
+  return words.length === 1 && words[0]!.length < 12;
+}
+
+function clarification(meta: Extract<LLMCallMeta, { kind: 'plan' }>): string {
+  const t = T[meta.lang];
+  const lead = meta.team.agents.find((a) => a.type === 'coordinator');
+  const name = lead?.name[meta.lang] ?? '';
+  const first = meta.clarifications.length === 0;
+  return JSON.stringify({
+    action: 'clarify',
+    reply: first ? t.clarifyReply(name) : t.clarifyAgain,
+    questions: first ? t.clarifyQuestions : t.clarifyQuestions.slice(0, 1),
+    summary: '',
+    subtasks: [],
+  });
 }
 
 const T = {
@@ -39,6 +82,15 @@ const T = {
     question: 'Which constraint (time, budget or audience) matters most for the next revision?',
     finalIntro: (task: string, n: number) =>
       `Final package for “${task}”, combining ${n} approved reports from the team.`,
+    clarifyReply: (name: string) =>
+      `Hi! I'm ${name}, the coordinator. Before I split the work, I need a little more to go on.`,
+    clarifyAgain:
+      "Thanks! I still can't tell what the team should make — a sentence about the result is enough.",
+    clarifyQuestions: [
+      'What should the team produce?',
+      'Who is it for, and how will it be used?',
+      'Any limits on time, budget or tools?',
+    ],
   },
   tr: {
     summary: (agent: string, role: string, title: string) =>
@@ -58,6 +110,15 @@ const T = {
     question: 'Bir sonraki revizyonda hangi kısıt (süre, bütçe ya da hedef kitle) daha önemli?',
     finalIntro: (task: string, n: number) =>
       `“${task}” için final paket; ekipten onaylanan ${n} raporu bir araya getirir.`,
+    clarifyReply: (name: string) =>
+      `Merhaba! Ben ${name}, koordinatörüm. İşi bölüştürmeden önce biraz daha bilgiye ihtiyacım var.`,
+    clarifyAgain:
+      'Teşekkürler! Ekibin ne hazırlaması gerektiğini hâlâ anlayamadım; sonucu anlatan bir cümle yeterli.',
+    clarifyQuestions: [
+      'Ekip ne hazırlamalı?',
+      'Kimin için ve nasıl kullanılacak?',
+      'Süre, bütçe ya da araçlarla ilgili bir sınır var mı?',
+    ],
   },
 } satisfies Record<Lang, unknown>;
 
@@ -125,8 +186,12 @@ function mergeReport(meta: Extract<LLMCallMeta, { kind: 'merge' }>): string {
 
 function answer(meta: LLMCallMeta): string {
   switch (meta.kind) {
-    case 'plan':
-      return JSON.stringify(defaultPlan(meta.team, meta.task, meta.lang));
+    case 'plan': {
+      const latest = meta.clarifications.at(-1)?.answer ?? meta.task;
+      if (meta.canAsk && needsDetails(latest)) return clarification(meta);
+      const request = [meta.task, ...meta.clarifications.map((c) => c.answer)].join(' — ');
+      return JSON.stringify({ action: 'plan', ...defaultPlan(meta.team, request, meta.lang) });
+    }
     case 'work':
       return workReport(meta);
     case 'merge':

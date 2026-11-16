@@ -29,6 +29,7 @@ export function goalFor(activity: AgentActivity): Goal {
     case 'coordinating':
       return { kind: 'desk', pose: 'reading' };
     case 'review':
+    case 'asking':
       return { kind: 'desk', pose: 'handRaised' };
     case 'approved':
       return { kind: 'desk', pose: 'nod', thenFree: NOD_SECONDS };

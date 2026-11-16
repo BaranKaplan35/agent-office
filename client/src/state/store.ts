@@ -44,6 +44,8 @@ export interface AppState {
   setTab: (tab: PanelTab) => void;
   dismissError: () => void;
 
+  /** Answer the coordinator's questions; planning continues. */
+  answer: (text: string) => Promise<boolean>;
   approve: () => Promise<boolean>;
   revise: (note: string) => Promise<boolean>;
   retry: (selection: Selection) => Promise<boolean>;
@@ -209,6 +211,8 @@ export const useApp = create<AppState>()((set, get) => {
     setTab: (tab) => set({ tab }),
 
     dismissError: () => set({ error: null }),
+
+    answer: async (text) => !!(await command('answer', (taskId) => api.clarify(taskId, text))),
 
     approve: async () => {
       const { selection } = get();

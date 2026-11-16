@@ -37,6 +37,8 @@ export interface RouterDeps {
   adapters?: Partial<Record<LLMProviderName, LLMProvider>>;
   fetch?: FetchLike;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  /** Milliseconds clock for call durations (tests). */
+  now?: () => number;
 }
 
 function missingKey(provider: LLMProviderName, variable: string): LLMProvider {
@@ -88,6 +90,7 @@ export function concurrencyFor(provider: LLMProviderName, env: Env): number {
 export function createLLMProvider(env: Env, deps: RouterDeps = {}): LLMRouter {
   const adapters = new Map<LLMProviderName, LLMProvider>();
   const limiters = new Map<LLMProviderName, ReturnType<typeof createLimiter>>();
+  const now = deps.now ?? (() => performance.now());
 
   const adapterFor = (provider: LLMProviderName): LLMProvider => {
     let adapter = adapters.get(provider);
@@ -136,9 +139,16 @@ export function createLLMProvider(env: Env, deps: RouterDeps = {}): LLMRouter {
       };
 
       // The slot stays taken while backing off, so a rate limit really slows us down.
-      return limiterFor(provider)(() =>
-        withRetry(attempt, { retries: env.LLM_RETRIES, signal: request.signal, sleep: deps.sleep }),
-      );
+      // The duration starts once the slot is ours: queueing is not the model's time.
+      return limiterFor(provider)(async () => {
+        const started = now();
+        const res = await withRetry(attempt, {
+          retries: env.LLM_RETRIES,
+          signal: request.signal,
+          sleep: deps.sleep,
+        });
+        return { ...res, provider, model, durationMs: Math.max(0, Math.round(now() - started)) };
+      });
     },
   };
 }

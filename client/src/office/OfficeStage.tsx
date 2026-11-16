@@ -8,6 +8,7 @@ import { OfficeErrorBoundary } from './OfficeErrorBoundary';
 import type { CameraHandle } from './scene/CameraRig';
 import type { SceneActivity } from './scene/DeskTag';
 import type { OfficeSceneProps } from './scene/OfficeScene';
+import { TASK_INPUT_ID } from '../panels/TaskInput';
 import { TaskHeader } from './TaskHeader';
 import { TeamBoard } from './TeamBoard';
 import { isWebGLAvailable } from './webgl';
@@ -57,6 +58,11 @@ function FlatOffice({ team, notice }: { team: PublicTeam; notice: string }) {
   );
 }
 
+/** The coordinator's "?" bubble leads to the box where the user answers. */
+function focusAnswer() {
+  document.getElementById(TASK_INPUT_ID)?.focus();
+}
+
 /** Esc shouldn't steal a keystroke meant for a text field or an open menu. */
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -90,6 +96,7 @@ function Office3D({ team }: { team: PublicTeam }) {
       canvas: t('office.canvasLabel'),
       status: (activity: SceneActivity) => t(`activity.${activity}`),
       open: (name: string) => t('office.openReport', { name }),
+      answer: (name: string) => t('office.answerQuestions', { name }),
     }),
     [t],
   );
@@ -103,6 +110,7 @@ function Office3D({ team }: { team: PublicTeam }) {
           lang={lang}
           selection={selection}
           onSelect={select}
+          onAnswer={focusAnswer}
           reduced={reduced}
           cameraRef={camera}
           onViewMoved={setViewMoved}

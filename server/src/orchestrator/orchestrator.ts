@@ -1,21 +1,25 @@
 import { randomUUID } from 'node:crypto';
-import type {
-  AgentConfig,
-  AgentMessage,
-  CreateTaskRequest,
-  ReportVersion,
-  Subtask,
-  Task,
-  TaskEvent,
-  TeamConfig,
+import {
+  MAX_CLARIFICATIONS,
+  type AgentConfig,
+  type AgentMessage,
+  type CallMetrics,
+  type CreateTaskRequest,
+  type ReportVersion,
+  type Subtask,
+  type Task,
+  type TaskEvent,
+  type TeamConfig,
 } from '@agent-office/shared';
 import type { LLMProvider, LLMRequest, LLMResponse } from '../llm';
+import type { AnsweredClarification } from '../llm/types';
 import { defaultPlan, type PlanDraft } from '../teams/defaultPlan';
-import { PlanParseError, parsePlan } from './planParser';
+import { PlanParseError, parseCoordinatorAnswer, type CoordinatorAnswer } from './planParser';
 import {
   buildMergeRequest,
   buildPlanRequest,
   buildWorkRequest,
+  requestLine,
   type ApprovedSource,
 } from './prompts';
 import { summarize } from './summarize';
@@ -48,6 +52,9 @@ export interface OrchestratorOptions {
 
 export const MAX_NOTE_LENGTH = 2000;
 
+/** A model answer plus what the call cost. */
+type MeasuredResponse = LLMResponse & { metrics: CallMetrics };
+
 type Listener = (event: TaskEvent) => void;
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type NewMessage = DistributiveOmit<AgentMessage, 'id' | 'taskId' | 'createdAt'>;
@@ -64,6 +71,13 @@ interface Runtime {
 }
 
 const TERMINAL: ReadonlyArray<Task['status']> = ['completed', 'cancelled', 'failed'];
+
+/** Question rounds the user has answered, in the shape the prompts need. */
+function answered(task: Task): AnsweredClarification[] {
+  return task.clarifications.flatMap((c) =>
+    c.answer === undefined ? [] : [{ reply: c.reply, questions: c.questions, answer: c.answer }],
+  );
+}
 
 /**
  * Owns every task: plans with the coordinator, schedules subtasks along their
@@ -118,6 +132,8 @@ export class Orchestrator {
       prompt,
       lang: input.lang,
       status: 'planning',
+      clarifications: [],
+      planCalls: [],
       subtasks: [],
       messages: [],
       createdAt,
@@ -132,6 +148,31 @@ export class Orchestrator {
     });
     this.forgetOldTasks();
 
+    void this.runPlanning(task);
+    return structuredClone(task);
+  }
+
+  /** The user answers the coordinator's questions; planning continues with the answer. */
+  answerClarification(taskId: string, answer: string): Task {
+    const task = this.mustGetActive(taskId);
+    const clean = this.validateNote(answer, 'An answer is required');
+    const open = task.clarifications.at(-1);
+    if (task.status !== 'awaiting_clarification' || !open || open.answer !== undefined) {
+      throw new OrchestratorError('invalid_state', 'The coordinator is not waiting for an answer');
+    }
+    open.answer = clean;
+    open.answeredAt = this.timestamp();
+    task.status = 'planning';
+    this.publish(
+      task,
+      this.message(task, {
+        type: 'clarification_answer',
+        from: 'user',
+        to: this.coordinator(task).id,
+        revision: 0,
+        payload: { round: open.round, answer: clean },
+      }),
+    );
     void this.runPlanning(task);
     return structuredClone(task);
   }
@@ -271,21 +312,51 @@ export class Orchestrator {
 
   private async runPlanning(task: Task): Promise<void> {
     const rt = this.runtime(task);
-    let plan: PlanDraft | undefined;
+    const clarifications = answered(task);
+    const canAsk = task.clarifications.length < MAX_CLARIFICATIONS;
+    let answer: CoordinatorAnswer | undefined;
     let lastError: unknown;
 
     // Two attempts; an unusable plan falls back to the team's default hand-offs.
-    for (let attempt = 0; attempt < 2 && !plan; attempt++) {
+    for (let attempt = 0; attempt < 2 && !answer; attempt++) {
       try {
-        const res = await this.call(task, buildPlanRequest(rt.team, task.prompt, task.lang));
+        const res = await this.call(
+          task,
+          buildPlanRequest(rt.team, task.prompt, task.lang, { clarifications, canAsk }),
+        );
         if (this.isClosed(task)) return;
-        plan = parsePlan(res.text, rt.team);
+        task.planCalls.push(res.metrics);
+        answer = parseCoordinatorAnswer(res.text, rt.team, { canAsk });
       } catch (err) {
         if (this.isClosed(task)) return;
         lastError = err;
       }
     }
 
+    if (answer?.kind === 'clarify') {
+      const round = task.clarifications.length + 1;
+      task.clarifications.push({
+        round,
+        reply: answer.reply,
+        questions: answer.questions,
+        askedAt: this.timestamp(),
+      });
+      task.status = 'awaiting_clarification';
+      this.publish(
+        task,
+        this.message(task, {
+          type: 'clarification',
+          from: this.coordinator(task).id,
+          to: 'user',
+          revision: 0,
+          payload: { round, reply: answer.reply, questions: answer.questions },
+        }),
+      );
+      return;
+    }
+
+    let plan: PlanDraft | undefined = answer?.plan;
+    const request = requestLine(task.prompt, clarifications);
     if (!plan) {
       if (!(lastError instanceof PlanParseError)) {
         task.status = 'failed';
@@ -302,10 +373,10 @@ export class Orchestrator {
         );
         return;
       }
-      plan = defaultPlan(rt.team, task.prompt, task.lang);
+      plan = defaultPlan(rt.team, request, task.lang);
     }
 
-    const fallbackSummary = defaultPlan(rt.team, task.prompt, task.lang).summary;
+    const fallbackSummary = defaultPlan(rt.team, request, task.lang).summary;
     task.planSummary = plan.summary || fallbackSummary;
     task.subtasks = plan.subtasks.map((p) => ({ ...p, status: 'blocked', versions: [] }));
     task.status = 'running';
@@ -374,6 +445,7 @@ export class Orchestrator {
           title: sub.title,
           instructions: sub.instructions,
           sources: this.approvedSources(task, sub.dependsOn),
+          clarifications: answered(task),
           revision: note !== undefined && previous ? { previous, note } : undefined,
         }),
       );
@@ -395,7 +467,7 @@ export class Orchestrator {
             version: version.version,
             markdown: version.markdown,
             summary: version.summary,
-            usage: version.usage,
+            metrics: version.metrics,
           },
         }),
       );
@@ -439,6 +511,7 @@ export class Orchestrator {
           task: task.prompt,
           lang: task.lang,
           sources,
+          clarifications: answered(task),
           revision: note !== undefined && previous ? { previous, note } : undefined,
         }),
       );
@@ -459,7 +532,7 @@ export class Orchestrator {
             version: version.version,
             markdown: version.markdown,
             sources: sources.map((s) => ({ subtaskId: s.subtaskId, version: s.version })),
-            usage: version.usage,
+            metrics: version.metrics,
           },
         }),
       );
@@ -482,15 +555,28 @@ export class Orchestrator {
 
   // ---------------------------------------------------------------- helpers
 
-  private call(task: Task, request: LLMRequest): Promise<LLMResponse> {
+  /**
+   * One model call with the task's cancel signal and the safety-net timeout. The
+   * router reports which model answered and how long it took; without a router
+   * (tests), the provider name and the measured time stand in.
+   */
+  private async call(task: Task, request: LLMRequest): Promise<MeasuredResponse> {
     const signal = AbortSignal.any([
       this.runtime(task).abort.signal,
       AbortSignal.timeout(this.timeoutMs),
     ]);
-    return this.options.llm.generate({ ...request, signal });
+    const started = performance.now();
+    const res = await this.options.llm.generate({ ...request, signal });
+    const metrics: CallMetrics = {
+      provider: res.provider ?? this.options.llm.name,
+      model: res.model ?? request.model ?? this.options.llm.name,
+      durationMs: res.durationMs ?? Math.round(performance.now() - started),
+      ...(res.usage ? { usage: res.usage } : {}),
+    };
+    return { ...res, metrics };
   }
 
-  private newVersion(version: number, res: LLMResponse, note?: string): ReportVersion {
+  private newVersion(version: number, res: MeasuredResponse, note?: string): ReportVersion {
     const markdown = res.text.trim();
     if (!markdown) throw new Error('The model returned an empty answer');
     return {
@@ -499,7 +585,7 @@ export class Orchestrator {
       summary: summarize(markdown),
       createdAt: this.timestamp(),
       ...(note !== undefined ? { revisionNote: note } : {}),
-      ...(res.usage ? { usage: res.usage } : {}),
+      metrics: res.metrics,
     };
   }
 
@@ -550,9 +636,9 @@ export class Orchestrator {
     }
   }
 
-  private validateNote(note: string): string {
+  private validateNote(note: string, emptyMessage = 'A revision note is required'): string {
     const clean = note.trim();
-    if (!clean) throw new OrchestratorError('validation', 'A revision note is required');
+    if (!clean) throw new OrchestratorError('validation', emptyMessage);
     if (clean.length > MAX_NOTE_LENGTH) {
       throw new OrchestratorError(
         'validation',

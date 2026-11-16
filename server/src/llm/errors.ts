@@ -65,6 +65,21 @@ export function describeStatus(status: number, detail?: string): string {
   return detail ? `${what} (HTTP ${status}: ${detail})` : `${what} (HTTP ${status})`;
 }
 
+/**
+ * A 429 that is a daily quota, not a per-minute rate limit (Gemini's free tier
+ * says "requests per day … limit: 20 … Please retry in 14h16m48s"). Waiting a
+ * few seconds can't fix it, so it must not be retried and should say so.
+ */
+export function describeDailyQuota(detail: string): string | null {
+  if (!/per ?day/i.test(detail)) return null;
+  const limit = /limit:\s*(\d+)/i.exec(detail)?.[1];
+  const hours = /retry in\s*(?:(\d+)h)?\s*(?:(\d+)m)?/i.exec(detail);
+  const h = hours ? Number(hours[1] ?? 0) + (Number(hours[2] ?? 0) >= 30 ? 1 : 0) : undefined;
+  const per = limit ? ` (${limit} requests a day for this model)` : '';
+  const when = h !== undefined ? (h <= 1 ? ' in about an hour' : ` in about ${h} h`) : '';
+  return `the daily free-tier limit is used up${per}; it resets${when || ' tomorrow'}. Try again then, or give these agents another model`;
+}
+
 /** Was this thrown because the call was aborted (cancel or timeout)? */
 export function isAbort(err: unknown): boolean {
   return err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');

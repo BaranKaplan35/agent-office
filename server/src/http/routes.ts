@@ -5,11 +5,13 @@ import {
   type HealthResponse,
   type PublicTeam,
   type Task,
+  type TeamConfig,
 } from '@agent-office/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { Env } from '../env';
 import type { PreflightProblem } from '../llm/preflight';
+import { resolveModel } from '../llm/resolve';
 import { MAX_NOTE_LENGTH, type Orchestrator } from '../orchestrator/orchestrator';
 import { toPublicTeam, type TeamRegistry } from '../teams/loader';
 import { HttpError, parseBody } from './errors';
@@ -19,12 +21,17 @@ export const APP_VERSION = '0.1.0';
 
 const CreateTaskBody = z.object({
   teamId: z.string().min(1),
-  prompt: z.string().trim().min(3).max(4000),
+  // Short inputs are allowed: for "hi" the coordinator asks what to do.
+  prompt: z.string().trim().min(1).max(4000),
   lang: z.enum(LANGS).default(DEFAULT_LANG),
 });
 
 const ReviseBody = z.object({
   note: z.string().trim().min(1).max(MAX_NOTE_LENGTH),
+});
+
+const ClarifyBody = z.object({
+  answer: z.string().trim().min(1).max(MAX_NOTE_LENGTH),
 });
 
 export interface ApiDeps {
@@ -38,12 +45,15 @@ export interface ApiDeps {
 export function apiRouter({ env, teams, orchestrator, problems = () => [] }: ApiDeps): Router {
   const api = Router();
 
-  const unavailableIn = (teamId: string) =>
-    new Map(
-      problems()
-        .filter((p) => p.teamId === teamId)
-        .map((p) => [p.agentId, p.reason]),
-    );
+  const publicTeam = (team: TeamConfig): PublicTeam =>
+    toPublicTeam(team, {
+      resolve: (agent) => resolveModel(agent, env),
+      unavailable: new Map(
+        problems()
+          .filter((p) => p.teamId === team.id)
+          .map((p) => [p.agentId, p.reason]),
+      ),
+    });
 
   api.get('/health', (_req, res) => {
     const body: HealthResponse = { ok: true, provider: env.LLM_PROVIDER, version: APP_VERSION };
@@ -52,14 +62,14 @@ export function apiRouter({ env, teams, orchestrator, problems = () => [] }: Api
 
   // ---- teams
   api.get('/teams', (_req, res) => {
-    const body: PublicTeam[] = teams.list().map((t) => toPublicTeam(t, unavailableIn(t.id)));
+    const body: PublicTeam[] = teams.list().map(publicTeam);
     res.json(body);
   });
 
   api.get('/teams/:teamId', (req, res) => {
     const team = teams.get(req.params.teamId);
     if (!team) throw new HttpError(404, 'not_found', `Unknown team "${req.params.teamId}"`);
-    res.json(toPublicTeam(team, unavailableIn(team.id)) satisfies PublicTeam);
+    res.json(publicTeam(team));
   });
 
   // ---- tasks
@@ -88,6 +98,12 @@ export function apiRouter({ env, teams, orchestrator, problems = () => [] }: Api
 
   api.post('/tasks/:taskId/cancel', (req, res) => {
     res.json(orchestrator.cancel(req.params.taskId));
+  });
+
+  // ---- the coordinator asked before planning; the user answers
+  api.post('/tasks/:taskId/clarify', (req, res) => {
+    const { answer } = parseBody(ClarifyBody, req.body);
+    res.json(orchestrator.answerClarification(req.params.taskId, answer));
   });
 
   // ---- review decisions on subtasks

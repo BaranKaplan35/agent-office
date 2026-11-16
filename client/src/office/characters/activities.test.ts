@@ -6,6 +6,7 @@ const ALL: AgentActivity[] = [
   'idle',
   'notNeeded',
   'planning',
+  'asking',
   'coordinating',
   'waiting',
   'working',
@@ -30,6 +31,7 @@ describe('goalFor', () => {
 
   it('raises a hand when a report waits for review, and slumps on failure', () => {
     expect(goalFor('review')).toEqual({ kind: 'desk', pose: 'handRaised' });
+    expect(goalFor('asking')).toEqual({ kind: 'desk', pose: 'handRaised' });
     expect(goalFor('failed')).toEqual({ kind: 'desk', pose: 'slumped' });
   });
 

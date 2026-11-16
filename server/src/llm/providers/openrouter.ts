@@ -5,6 +5,7 @@
  */
 import { LLMError } from '../errors';
 import { PLAN_JSON_SCHEMA } from '../planSchema';
+import { toUsage } from '../usage';
 import type { LLMProvider, LLMRequest, LLMResponse } from '../types';
 import { postJson, type FetchLike } from './http';
 
@@ -70,10 +71,7 @@ export function createOpenRouterProvider(options: OpenRouterOptions): LLMProvide
       }
       return {
         text: data.choices?.[0]?.message?.content ?? '',
-        usage: {
-          inputTokens: data.usage?.prompt_tokens ?? 0,
-          outputTokens: data.usage?.completion_tokens ?? 0,
-        },
+        usage: toUsage(data.usage?.prompt_tokens, data.usage?.completion_tokens),
       };
     },
   };

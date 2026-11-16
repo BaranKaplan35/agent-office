@@ -349,7 +349,58 @@ Done as planned, with these decisions made along the way:
 - **Tests:** adapters against mocked `fetch` / SDK responses (usage mapping per
   provider), model resolution, preflight messages, schema for the `llm` field
 
-### 2b — Model visibility, metrics and docs
+### 2b — Model visibility, metrics, clarification and docs ✅
+
+Done as planned, plus a clarification step added at the start of the phase:
+
+- **Clarification step:** before planning, the coordinator decides whether it can plan.
+  For a non-task ("selam", "hi") or a task too vague to plan, it answers with a short
+  reply and 1–3 questions instead of subtasks. One flat JSON shape covers both outcomes
+  (`action: "plan" | "clarify"`, `reply`, `questions`, `summary`, `subtasks`) because
+  strict structured-output modes don't accept unions; `parseCoordinatorAnswer` reads
+  it, keeps at most three short questions, and treats "questions and no subtasks" as a
+  question round even without `action`
+- **Flow:** new task status `awaiting_clarification`, new message types `clarification`
+  (coordinator → user) and `clarification_answer` (user → coordinator), new endpoint
+  `POST /tasks/:id/clarify {answer}`. The plan request replays earlier rounds as a
+  conversation; workers and the merge get a "Details the user gave when asked" section.
+  At most `MAX_CLARIFICATIONS = 2` rounds, then the prompt says "plan now" and a model
+  that still asks falls back to the default plan. Prompts may now be one character long
+- **Mock:** `needsDetails()` stands in for judgement (only small talk in either
+  language, or one short word); the first round asks three questions, the second one
+- **UI:** the task box shows the questions and becomes the answer box (focused when a
+  question arrives); the review queue shows "{name} needs a few details" and counts it;
+  the header shows "prompt — answer". In 3D the coordinator raises a hand and its bubble
+  shows a "?" badge, stays open, and focuses the answer box when clicked (the flat board
+  does the same)
+- **Checked live:** Gemini asks for "selam", "hi" and "Bir şey yap" and plans
+  "Öğrenciler için alışkanlık takip uygulaması" and "A landing page for my bakery"
+  directly; `qwen3.5:9b` on Ollama behaves the same with the new schema
+- **Model labels:** `PublicAgent.llm` is now always the resolved `{ provider, model }`
+  (`toPublicTeam(team, { resolve, unavailable })`); the desk bubble shows it on hover,
+  the report header and the flat board always. `mock` is shown as just "mock"
+- **Metrics:** `CallMetrics { provider, model, durationMs, usage? }` on every
+  `ReportVersion` (`metrics`, replacing `usage`) and on report/final messages; the
+  coordinator's planning calls go to `task.planCalls`. The router fills in provider,
+  model and duration (timed once a limiter slot is free, retries included). Adapters
+  report missing token counts as missing (`toUsage`), and the UI shows "tokens —"
+- **Formatting:** `state/metrics.ts` (pure, tested) with `Intl`: "1.2K in / 850 out ·
+  4.3s" in English, "1,2 B giriş / 850 çıkış · 4,3 sn" in Turkish (short units: the
+  narrow Turkish minute "d" reads like "day")
+- **Task totals:** with the final output, a table per model (calls, tokens in/out,
+  model time) plus a total row, counting planning, every report version and the final
+- **Gemini free tier:** `gemini-3.6-flash` allows only **20 requests a day** per project
+  (found when the quota ran out during testing); a task makes about 7–10 calls. A daily
+  quota 429 is no longer retried and says when it resets ("the daily free-tier limit is
+  used up (20 requests a day for this model); it resets in about 14 h")
+- **Layout fixes found on the way:** the office row has a 440 px minimum so short
+  windows scroll instead of the office covering the task box; on narrow screens the
+  task box's notices no longer take a full column
+- **README:** provider table (env vars, default model, cost, where prompts go), free
+  tier note, Ollama note, and a mixed-team YAML example
+- Not done: broader prompt tuning per template across providers (moved to Polish)
+
+- Original plan for this sub-phase:
 
 - **Model labels:** `PublicAgent` exposes its resolved `{ provider, model }` (never
   keys); a small tag on each desk and in the report header, e.g. `ollama · qwen2.5-coder`
@@ -377,6 +428,10 @@ Done as planned, with these decisions made along the way:
 
 Small improvements collected along the way; done after the main phases unless one
 becomes blocking.
+
+- [ ] Prompt tuning for both templates across providers (from 2b)
+- [ ] A planning failure (e.g. a rate limit right after the user answered a question)
+      fails the whole task; offer "Try again" for planning like reports have
 
 - [ ] When a task is completed, the "All done" screen in the right panel offers
       "View final" and "Download .md" buttons directly (today you have to open the

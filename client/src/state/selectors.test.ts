@@ -6,7 +6,9 @@ import {
   exportFilename,
   failedItems,
   isTaskActive,
+  openClarification,
   progress,
+  requestText,
   reviewableFor,
   reviewQueue,
   revisionsLeft,
@@ -22,6 +24,7 @@ const agent = (id: string, type: 'coordinator' | 'worker' = 'worker') => ({
   role: { en: id, tr: id },
   icon: 'circle',
   deskColor: '#000000',
+  llm: { provider: 'mock' as const, model: 'mock' },
 });
 
 const team: PublicTeam = {
@@ -64,6 +67,8 @@ const task = (extra: Partial<Task> = {}): Task => ({
   prompt: 'p',
   lang: 'en',
   status: 'running',
+  clarifications: [],
+  planCalls: [],
   subtasks: [],
   messages: [],
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -105,6 +110,40 @@ describe('agentActivity', () => {
     expect(activityTone('review')).toBe('review');
     expect(activityTone('done')).toBe('ok');
     expect(activityTone('waiting')).toBe('muted');
+  });
+});
+
+describe('clarification', () => {
+  const asked = {
+    round: 1,
+    reply: 'Hi!',
+    questions: ['What should we make?'],
+    askedAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  it('the coordinator asks, everyone else waits around', () => {
+    const t = task({ status: 'awaiting_clarification', clarifications: [asked] });
+    expect(agentActivity(t, team.agents[0]!)).toBe('asking');
+    expect(agentActivity(t, team.agents[1]!)).toBe('idle');
+    expect(activityTone('asking')).toBe('review');
+    expect(isTaskActive(t)).toBe(true);
+  });
+
+  it('requestText adds the answers to the prompt', () => {
+    const answered = { ...asked, answer: 'A habit app' };
+    expect(requestText(task({ prompt: 'selam', clarifications: [answered] }))).toBe(
+      'selam — A habit app',
+    );
+    expect(requestText(task({ prompt: 'Plain' }))).toBe('Plain');
+  });
+
+  it('openClarification is the unanswered round while the task waits for it', () => {
+    expect(
+      openClarification(task({ status: 'awaiting_clarification', clarifications: [asked] })),
+    ).toBe(asked);
+    const answered = { ...asked, answer: 'A lesson' };
+    expect(openClarification(task({ status: 'planning', clarifications: [answered] }))).toBeNull();
+    expect(openClarification(null)).toBeNull();
   });
 });
 

@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/context';
-import { progress } from '../state/selectors';
+import { progress, requestText } from '../state/selectors';
 import { useApp } from '../state/store';
 
 /** Current task, its status and the approval progress: shown above the office (3D or flat). */
@@ -15,8 +15,8 @@ export function TaskHeader() {
         <span className={`task-status status-${task.status}`}>
           {t(`taskStatus.${task.status}`)}
         </span>
-        <span className="board-prompt" title={task.prompt}>
-          {task.prompt}
+        <span className="board-prompt" title={requestText(task)}>
+          {requestText(task)}
         </span>
       </div>
       {total > 0 && (

@@ -4,6 +4,7 @@
  */
 import type {
   AgentMessage,
+  Clarification,
   PublicAgent,
   PublicTeam,
   ReportVersion,
@@ -37,6 +38,8 @@ export type AgentActivity =
   | 'idle'
   | 'notNeeded'
   | 'planning'
+  /** The coordinator asked the user for details before planning. */
+  | 'asking'
   | 'coordinating'
   | 'waiting'
   | 'working'
@@ -54,6 +57,8 @@ export function agentActivity(task: Task | null, agent: PublicAgent): AgentActiv
     switch (task.status) {
       case 'planning':
         return 'planning';
+      case 'awaiting_clarification':
+        return 'asking';
       case 'running':
         return 'coordinating';
       case 'merging':
@@ -67,7 +72,13 @@ export function agentActivity(task: Task | null, agent: PublicAgent): AgentActiv
     }
   }
 
-  if (task.status === 'planning' || task.status === 'failed') return 'idle';
+  if (
+    task.status === 'planning' ||
+    task.status === 'awaiting_clarification' ||
+    task.status === 'failed'
+  ) {
+    return 'idle';
+  }
   const sub = task.subtasks.find((s) => s.assignee === agent.id);
   if (!sub) return 'notNeeded';
   switch (sub.status) {
@@ -97,6 +108,7 @@ export function activityTone(activity: AgentActivity): ActivityTone {
     case 'merging':
       return 'working';
     case 'review':
+    case 'asking':
       return 'review';
     case 'approved':
     case 'done':
@@ -184,6 +196,20 @@ export function failedItems(task: Task | null, team: PublicTeam | null): FailedI
     });
   }
   return items;
+}
+
+/** What the user asked for, with any answers to the coordinator's questions ("selam — a habit app"). */
+export function requestText(task: Task): string {
+  return [task.prompt, ...task.clarifications.flatMap((c) => (c.answer ? [c.answer] : []))].join(
+    ' — ',
+  );
+}
+
+/** The coordinator's open question round, while it waits for the user's answer. */
+export function openClarification(task: Task | null): Clarification | null {
+  if (task?.status !== 'awaiting_clarification') return null;
+  const last = task.clarifications.at(-1);
+  return last && last.answer === undefined ? last : null;
 }
 
 export function progress(task: Task | null): { approved: number; total: number } {

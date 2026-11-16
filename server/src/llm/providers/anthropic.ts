@@ -6,6 +6,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describeStatus, isAbort, isRetryableStatus, LLMError, parseRetryAfter } from '../errors';
 import { PLAN_JSON_SCHEMA } from '../planSchema';
+import { toUsage } from '../usage';
 import type { LLMProvider, LLMRequest, LLMResponse } from '../types';
 
 const PLAN_TOOL = 'submit_plan';
@@ -49,7 +50,8 @@ export function createAnthropicProvider(options: AnthropicOptions): LLMProvider 
               tools: [
                 {
                   name: PLAN_TOOL,
-                  description: 'Hand in the plan: the summary and one subtask per worker.',
+                  description:
+                    'Hand in your decision: a plan (summary and one subtask per worker) or, for an unclear task, a short reply with questions.',
                   input_schema: PLAN_JSON_SCHEMA as unknown as Anthropic.Tool.InputSchema,
                 },
               ],
@@ -93,10 +95,7 @@ export function createAnthropicProvider(options: AnthropicOptions): LLMProvider 
             .join('');
       return {
         text,
-        usage: {
-          inputTokens: res.usage?.input_tokens ?? 0,
-          outputTokens: res.usage?.output_tokens ?? 0,
-        },
+        usage: toUsage(res.usage?.input_tokens, res.usage?.output_tokens),
       };
     },
   };

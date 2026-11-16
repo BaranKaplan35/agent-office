@@ -1,6 +1,14 @@
 import { AgentAvatar } from '../components/AgentAvatar';
 import { useI18n } from '../i18n/context';
-import { failedItems, findAgent, reviewQueue } from '../state/selectors';
+import { HelpCircle } from 'lucide-react';
+import {
+  coordinatorOf,
+  failedItems,
+  findAgent,
+  openClarification,
+  reviewQueue,
+} from '../state/selectors';
+import { TASK_INPUT_ID } from './TaskInput';
 import { useApp, useCurrentTeam } from '../state/store';
 
 export function ReviewQueue() {
@@ -19,6 +27,36 @@ export function ReviewQueue() {
       <div className="empty-state">
         <h3>{t('queue.completedTitle')}</h3>
         <p>{t('queue.completedBody')}</p>
+      </div>
+    );
+  }
+
+  const question = openClarification(task);
+  if (question && team) {
+    const lead = coordinatorOf(team);
+    return (
+      <div className="queue">
+        <section>
+          <h3 className="section-title">{t('queue.needsReview')}</h3>
+          <button
+            type="button"
+            className="queue-item is-question"
+            onClick={() => document.getElementById(TASK_INPUT_ID)?.focus()}
+          >
+            {lead && <AgentAvatar agent={lead} lang={lang} size={32} />}
+            <span className="queue-body">
+              <span className="queue-title">
+                <span className="tag tag-question">
+                  <HelpCircle size={12} aria-hidden="true" />
+                </span>
+                {t('clarify.title', { name: lead?.name[lang] ?? '' })}
+              </span>
+              <span className="queue-summary">
+                {t('clarify.queueBody', { name: lead?.name[lang] ?? '' })}
+              </span>
+            </span>
+          </button>
+        </section>
       </div>
     );
   }

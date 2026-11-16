@@ -9,8 +9,15 @@ import {
   ThinkingLevel,
   type GenerateContentParameters,
 } from '@google/genai';
-import { describeStatus, isAbort, isRetryableStatus, LLMError } from '../errors';
+import {
+  describeDailyQuota,
+  describeStatus,
+  isAbort,
+  isRetryableStatus,
+  LLMError,
+} from '../errors';
 import { PLAN_JSON_SCHEMA } from '../planSchema';
+import { toUsage } from '../usage';
 import type { LLMProvider, LLMRequest, LLMResponse } from '../types';
 
 /** The part of the SDK this adapter uses (tests pass a fake). */
@@ -74,6 +81,17 @@ export function createGeminiProvider(options: GeminiOptions): LLMProvider {
       } catch (err) {
         if (isAbort(err) || request.signal?.aborted) throw err;
         if (err instanceof ApiError) {
+          const daily = err.status === 429 ? describeDailyQuota(err.message) : null;
+          if (daily) {
+            throw new LLMError({
+              provider: 'gemini',
+              model,
+              status: err.status,
+              message: daily,
+              retryable: false,
+              cause: err,
+            });
+          }
           throw new LLMError({
             provider: 'gemini',
             model,
@@ -105,10 +123,13 @@ export function createGeminiProvider(options: GeminiOptions): LLMProvider {
       const usage = res.usageMetadata;
       return {
         text,
-        usage: {
-          inputTokens: usage?.promptTokenCount ?? 0,
-          outputTokens: (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0),
-        },
+        // Thinking counts as output: it is billed and limited like output.
+        usage: toUsage(
+          usage?.promptTokenCount,
+          usage?.candidatesTokenCount === undefined && usage?.thoughtsTokenCount === undefined
+            ? undefined
+            : (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
+        ),
       };
     },
   };

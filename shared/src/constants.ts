@@ -12,5 +12,12 @@ export const MAX_WORKERS = 5;
  */
 export const PERSONALITIES = ['social', 'diligent', 'coffee', 'calm', 'curious'] as const;
 
+/**
+ * The coordinator may ask before planning when a task is unclear: at most this many
+ * rounds, then it plans with reasonable assumptions.
+ */
+export const MAX_CLARIFICATIONS = 2;
+export const MAX_CLARIFYING_QUESTIONS = 3;
+
 /** Model backends. `mock` needs nothing; the others are chosen per agent or in `.env`. */
 export const LLM_PROVIDERS = ['mock', 'gemini', 'anthropic', 'ollama', 'openrouter'] as const;

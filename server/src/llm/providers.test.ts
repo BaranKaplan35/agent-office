@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseEnv } from '../env';
 import { buildPlanRequest, buildWorkRequest } from '../orchestrator/prompts';
 import { testTeam } from '../test/fixtures';
-import { isRetryableStatus, LLMError, parseRetryAfter } from './errors';
+import { describeDailyQuota, isRetryableStatus, LLMError, parseRetryAfter } from './errors';
 import { createLLMProvider } from './index';
 import { PLAN_JSON_SCHEMA } from './planSchema';
 import { createAnthropicProvider, type AnthropicMessages } from './providers/anthropic';
@@ -14,6 +14,7 @@ import { createOllamaProvider } from './providers/ollama';
 import { createOpenRouterProvider, OPENROUTER_URL } from './providers/openrouter';
 import { agentForCall, resolveModel } from './resolve';
 import { backoffDelay, withRetry } from './retry';
+import { toUsage } from './usage';
 import type { LLMProvider, LLMRequest } from './types';
 
 const team = testTeam();
@@ -173,6 +174,20 @@ describe('gemini adapter', () => {
     expect(err).toBeInstanceOf(LLMError);
     expect((err as LLMError).retryable).toBe(true);
     expect((err as LLMError).message).toMatch(/^gemini · gemini-3.6-flash: rate limit/);
+  });
+
+  it('says plainly when the daily free-tier quota is used up, and does not retry', async () => {
+    const detail =
+      'You exceeded your current quota. * Quota exceeded for metric: generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash, description: Generate content requests per day limit exceeded on Free Tier. Please retry in 14h16m48.7s.';
+    const { models } = fake(new ApiError({ message: detail, status: 429 }));
+    const err = (await createGeminiProvider({ apiKey: 'k', models })
+      .generate({ ...work(), model: 'gemini-3.6-flash' })
+      .catch((e: unknown) => e)) as LLMError;
+    expect(err.retryable).toBe(false);
+    expect(err.message).toBe(
+      'gemini · gemini-3.6-flash: the daily free-tier limit is used up (20 requests a day for this model); it resets in about 14 h. Try again then, or give these agents another model',
+    );
+    expect(describeDailyQuota('limit reached, retry in 20s')).toBeNull();
   });
 
   it('refuses an empty answer', async () => {
@@ -427,5 +442,37 @@ describe('router', () => {
   it('names the missing key instead of calling the provider', async () => {
     const router = createLLMProvider(parseEnv({ LLM_PROVIDER: 'openrouter' }));
     await expect(router.generate(work())).rejects.toThrow(/OPENROUTER_API_KEY is not set/);
+  });
+});
+
+// ------------------------------------------------------------------- metrics
+
+describe('token counts and call metrics', () => {
+  it('keeps missing counts missing instead of reporting 0', async () => {
+    expect(toUsage(undefined, undefined)).toBeUndefined();
+    expect(toUsage(10, undefined)).toEqual({ inputTokens: 10, outputTokens: 0 });
+    expect(toUsage(-1, Number.NaN)).toBeUndefined();
+
+    const { fn } = fakeFetch(() => json({ message: { content: '# Report' } }));
+    const res = await createOllamaProvider({ baseUrl: 'http://x', fetch: fn }).generate(work());
+    expect(res.usage).toBeUndefined();
+  });
+
+  it('the router names the model and times the call once a slot is free', async () => {
+    let clock = 1000;
+    const adapter: LLMProvider = {
+      name: 'gemini',
+      generate: async () => {
+        clock += 1234;
+        return { text: 'ok' };
+      },
+    };
+    const router = createLLMProvider(env, { adapters: { gemini: adapter }, now: () => clock });
+    expect(await router.generate(work())).toEqual({
+      text: 'ok',
+      provider: 'gemini',
+      model: 'gemini-3.6-flash',
+      durationMs: 1234,
+    });
   });
 });

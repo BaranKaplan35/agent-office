@@ -78,7 +78,7 @@ describe('teams API', () => {
 
 describe('tasks API', () => {
   it('validates new tasks', async () => {
-    const short = await post('/tasks', { teamId: 'software-startup', prompt: 'x' });
+    const short = await post('/tasks', { teamId: 'software-startup', prompt: '   ' });
     expect(short.status).toBe(400);
     expect(await short.json()).toMatchObject({ error: { code: 'validation' } });
 
@@ -149,5 +149,44 @@ describe('tasks API', () => {
     const done = (await (await post(`/tasks/${taskId}/final/approve`)).json()) as Task;
     expect(done.status).toBe('completed');
     expect((await post(`/tasks/${taskId}/cancel`)).status).toBe(409);
+  });
+});
+
+describe('clarification API', () => {
+  it('asks before planning a greeting, then plans with the answer', async () => {
+    const created = await post('/tasks', {
+      teamId: 'software-startup',
+      prompt: 'selam',
+      lang: 'tr',
+    });
+    expect(created.status).toBe(201);
+    const { taskId } = (await created.json()) as { taskId: string };
+
+    const asking = await until(taskId, (t) => t.status === 'awaiting_clarification');
+    expect(asking.subtasks).toEqual([]);
+    expect(asking.clarifications[0]?.questions.length).toBeGreaterThan(0);
+    expect(asking.messages.at(-1)?.type).toBe('clarification');
+
+    expect((await post(`/tasks/${taskId}/clarify`, { answer: ' ' })).status).toBe(400);
+    const answered = await post(`/tasks/${taskId}/clarify`, {
+      answer: 'Alışkanlık takibi için basit bir mobil uygulama',
+    });
+    expect(answered.status).toBe(200);
+    const running = await until(taskId, (t) => t.status === 'running');
+    expect(running.subtasks.length).toBeGreaterThan(0);
+    expect(running.planCalls).toHaveLength(2);
+
+    // Not waiting for an answer any more.
+    expect((await post(`/tasks/${taskId}/clarify`, { answer: 'again' })).status).toBe(409);
+  });
+});
+
+describe('model labels', () => {
+  it('every public agent names its resolved model', async () => {
+    const teams = (await (await fetch(`${base}/teams`)).json()) as PublicTeam[];
+    const maker = teams.find((t) => t.id === 'maker-lesson-studio')!;
+    const quinn = maker.agents.find((a) => a.llm.provider === 'ollama');
+    expect(quinn?.llm.model).toBe('qwen3.5:9b');
+    expect(maker.agents.filter((a) => a.llm.provider === 'mock').length).toBeGreaterThan(0);
   });
 });

@@ -70,8 +70,18 @@ export interface TeamConfig {
   agents: AgentConfig[];
 }
 
-/** Team as sent to the client: system prompts and mock data stay on the server. */
-export type PublicAgent = Omit<AgentConfig, 'systemPrompt' | 'mockResponse'> & {
+/** The model an agent actually runs on, after the `.env` default is applied. */
+export interface ResolvedLLM {
+  provider: LLMProviderName;
+  model: string;
+}
+
+/**
+ * Team as sent to the client: system prompts and mock data stay on the server.
+ * `llm` is always the resolved model (shown on desks and reports); keys never leave.
+ */
+export type PublicAgent = Omit<AgentConfig, 'systemPrompt' | 'mockResponse' | 'llm'> & {
+  llm: ResolvedLLM;
   /**
    * Set when this agent's model can't be used right now (missing API key, Ollama not
    * running or the model not pulled). The team can't start tasks until it is fixed.
@@ -86,6 +96,8 @@ export type PublicTeam = Omit<TeamConfig, 'agents'> & { agents: PublicAgent[] };
 
 export type TaskStatus =
   | 'planning'
+  /** The coordinator asked the user for details before planning. */
+  | 'awaiting_clarification'
   | 'running'
   | 'merging'
   | 'awaiting_final_review'
@@ -101,6 +113,16 @@ export interface TokenUsage {
   outputTokens: number;
 }
 
+/** What one model call cost: which model answered, how long it took, how many tokens. */
+export interface CallMetrics {
+  provider: LLMProviderName;
+  model: string;
+  /** Time the model took (waiting for a free slot excluded, retries included). */
+  durationMs: number;
+  /** Absent when the provider reported no token counts. */
+  usage?: TokenUsage;
+}
+
 /** One delivered version of a report (v1, v2, ...). Never mutated after creation. */
 export interface ReportVersion {
   version: number;
@@ -109,7 +131,23 @@ export interface ReportVersion {
   createdAt: string;
   /** The user's note that triggered this version (absent for v1). */
   revisionNote?: string;
-  usage?: TokenUsage;
+  metrics?: CallMetrics;
+}
+
+/**
+ * The coordinator found the task too vague (or not a task at all) and asked
+ * first. Once the user answers, planning continues with the answer.
+ */
+export interface Clarification {
+  /** 1 for the first question round. */
+  round: number;
+  /** A short reply to the user, e.g. a greeting back. */
+  reply: string;
+  /** 0–3 questions; the reply alone may already ask. */
+  questions: string[];
+  askedAt: string;
+  answer?: string;
+  answeredAt?: string;
 }
 
 export interface Subtask {
@@ -141,6 +179,10 @@ export interface Task {
   lang: Lang;
   status: TaskStatus;
   planSummary?: string;
+  /** Question rounds before planning, oldest first (usually none). */
+  clarifications: Clarification[];
+  /** The coordinator's planning calls (including the ones that asked questions). */
+  planCalls: CallMetrics[];
   subtasks: Subtask[];
   final?: FinalOutput;
   /** Set when the task as a whole failed (e.g. the model was unreachable while planning). */
@@ -192,9 +234,19 @@ export type AssignmentMessage = MessageBase<
   { title: string; instructions: string; dependsOn: string[]; context: ContextRef[] }
 >;
 
+export type ClarificationMessage = MessageBase<
+  'clarification',
+  { round: number; reply: string; questions: string[] }
+>;
+
+export type ClarificationAnswerMessage = MessageBase<
+  'clarification_answer',
+  { round: number; answer: string }
+>;
+
 export type ReportMessage = MessageBase<
   'report',
-  { version: number; markdown: string; summary: string; usage?: TokenUsage }
+  { version: number; markdown: string; summary: string; metrics?: CallMetrics }
 >;
 
 export type ApprovalMessage = MessageBase<'approval', { version: number }>;
@@ -210,7 +262,7 @@ export type FinalMessage = MessageBase<
     version: number;
     markdown: string;
     sources: Array<{ subtaskId: string; version: number }>;
-    usage?: TokenUsage;
+    metrics?: CallMetrics;
   }
 >;
 
@@ -220,6 +272,8 @@ export type ErrorMessage = MessageBase<
 >;
 
 export type AgentMessage =
+  | ClarificationMessage
+  | ClarificationAnswerMessage
   | PlanMessage
   | AssignmentMessage
   | ReportMessage
@@ -252,6 +306,10 @@ export interface CreateTaskResponse {
 
 export interface ReviseRequest {
   note: string;
+}
+
+export interface ClarifyRequest {
+  answer: string;
 }
 
 /** Every event carries a full task snapshot so the client never drifts. */

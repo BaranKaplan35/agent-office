@@ -1,4 +1,8 @@
-import type { PlannedSubtask, TeamConfig } from '@agent-office/shared';
+import {
+  MAX_CLARIFYING_QUESTIONS,
+  type PlannedSubtask,
+  type TeamConfig,
+} from '@agent-office/shared';
 import { z } from 'zod';
 import { findCycle } from '../lib/graph';
 import type { PlanDraft } from '../teams/defaultPlan';
@@ -43,7 +47,71 @@ export function extractJson(text: string): unknown {
  * Throws PlanParseError when nothing usable is left.
  */
 export function parsePlan(text: string, team: TeamConfig): PlanDraft {
-  const parsed = RawPlanSchema.safeParse(extractJson(text));
+  return planFromJson(extractJson(text), team);
+}
+
+/** What the coordinator decided while planning. */
+export type CoordinatorAnswer =
+  { kind: 'plan'; plan: PlanDraft } | { kind: 'clarify'; reply: string; questions: string[] };
+
+const MAX_REPLY = 600;
+const MAX_QUESTION = 300;
+
+const RawClarifySchema = z.object({
+  action: z.string().optional(),
+  reply: z.unknown().optional(),
+  questions: z.unknown().optional(),
+  subtasks: z.unknown().optional(),
+});
+
+function clip(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
+
+const strings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+
+/**
+ * Read the coordinator's planning answer: either a plan (see `parsePlan`) or a
+ * request for details (`action: "clarify"`, or questions and no subtasks). A
+ * clarification keeps at most three short questions. When asking is no longer
+ * allowed (`canAsk: false`), a clarification counts as an unusable answer.
+ */
+export function parseCoordinatorAnswer(
+  text: string,
+  team: TeamConfig,
+  { canAsk }: { canAsk: boolean },
+): CoordinatorAnswer {
+  const json = extractJson(text);
+  const raw = RawClarifySchema.safeParse(json);
+  if (raw.success) {
+    const { action, reply, questions, subtasks } = raw.data;
+    const asked = strings(questions)
+      .map((q) => clip(q, MAX_QUESTION))
+      .filter(Boolean);
+    const noSubtasks = !Array.isArray(subtasks) || subtasks.length === 0;
+    const wantsToAsk =
+      action?.trim().toLowerCase() === 'clarify' ||
+      (action === undefined && noSubtasks && asked.length > 0);
+    if (wantsToAsk) {
+      if (!canAsk) throw new PlanParseError('the coordinator asked again after the question limit');
+      const cleanReply = typeof reply === 'string' ? clip(reply, MAX_REPLY) : '';
+      if (!cleanReply && asked.length === 0) {
+        throw new PlanParseError('the clarification has neither a reply nor questions');
+      }
+      return {
+        kind: 'clarify',
+        reply: cleanReply,
+        questions: asked.slice(0, MAX_CLARIFYING_QUESTIONS),
+      };
+    }
+  }
+  return { kind: 'plan', plan: planFromJson(json, team) };
+}
+
+function planFromJson(json: unknown, team: TeamConfig): PlanDraft {
+  const parsed = RawPlanSchema.safeParse(json);
   if (!parsed.success) {
     throw new PlanParseError(`plan has the wrong shape: ${parsed.error.issues[0]?.message}`);
   }

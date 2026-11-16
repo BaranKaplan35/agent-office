@@ -15,8 +15,24 @@ export interface ChatMessage {
  * What a call is for. Real providers ignore this; the mock provider uses it to
  * produce believable, team-agnostic answers without a model.
  */
+/** A question round the user already answered (for the plan prompt and the mock). */
+export interface AnsweredClarification {
+  reply: string;
+  questions: string[];
+  answer: string;
+}
+
 export type LLMCallMeta =
-  | { kind: 'plan'; team: TeamConfig; task: string; lang: Lang }
+  | {
+      kind: 'plan';
+      team: TeamConfig;
+      task: string;
+      lang: Lang;
+      /** Earlier question rounds and the user's answers, oldest first. */
+      clarifications: AnsweredClarification[];
+      /** False once the question rounds are used up: the coordinator must plan. */
+      canAsk: boolean;
+    }
   | {
       kind: 'work';
       team: TeamConfig;
@@ -52,7 +68,12 @@ export interface LLMRequest {
 
 export interface LLMResponse {
   text: string;
+  /** Absent when the provider reported no token counts. */
   usage?: TokenUsage;
+  /** Filled in by the router: the model that answered and how long it took. */
+  provider?: LLMProviderName;
+  model?: string;
+  durationMs?: number;
 }
 
 export interface LLMProvider {

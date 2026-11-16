@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/context';
-import { reviewQueue } from '../state/selectors';
+import { openClarification, reviewQueue } from '../state/selectors';
 import { useApp, useCurrentTeam, type PanelTab } from '../state/store';
 import { MessageLog } from './MessageLog';
 import { ReportViewer } from './ReportViewer';
@@ -16,7 +16,10 @@ export function SidePanel() {
   const team = useCurrentTeam();
   const tab = useApp((s) => s.tab);
   const setTab = useApp((s) => s.setTab);
-  const queueCount = useApp((s) => reviewQueue(s.task, team).length);
+  // An open question counts too: it is the one thing the team waits for.
+  const queueCount = useApp(
+    (s) => reviewQueue(s.task, team).length + (openClarification(s.task) ? 1 : 0),
+  );
 
   return (
     <aside className="side card">

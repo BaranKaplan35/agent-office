@@ -48,9 +48,25 @@ describe('teams/ directory', () => {
 
   it('public teams never expose system prompts or mock data', async () => {
     const { teams } = await loadTeamsFromDir(TEAMS_DIR);
-    const json = JSON.stringify(teams.map((t) => toPublicTeam(t)));
+    const resolve = () => ({ provider: 'gemini' as const, model: 'gemini-x' });
+    const json = JSON.stringify(teams.map((t) => toPublicTeam(t, { resolve })));
     expect(json).not.toContain('systemPrompt');
     expect(json).not.toContain('mockResponse');
+  });
+
+  it('public agents carry their resolved model and the unavailable reason', () => {
+    const team = validateTeam(valid());
+    if (!team.ok) throw new Error('invalid test team');
+    const pub = toPublicTeam(team.team, {
+      resolve: (a) => ({ provider: 'ollama', model: `m-${a.id}` }),
+      unavailable: new Map([[team.team.agents[1]!.id, 'Ollama is not running']]),
+    });
+    expect(pub.agents[0]?.llm).toEqual({
+      provider: 'ollama',
+      model: `m-${team.team.agents[0]!.id}`,
+    });
+    expect(pub.agents[0]?.unavailable).toBeUndefined();
+    expect(pub.agents[1]?.unavailable).toBe('Ollama is not running');
   });
 });
 

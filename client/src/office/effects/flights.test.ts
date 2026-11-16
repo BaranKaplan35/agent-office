@@ -33,6 +33,8 @@ const task = (id: string, messages: AgentMessage[]): Task => ({
   prompt: 'p',
   lang: 'en',
   status: 'running',
+  clarifications: [],
+  planCalls: [],
   subtasks: [],
   messages,
   createdAt: '2026-01-01T00:00:00.000Z',

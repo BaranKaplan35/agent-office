@@ -69,7 +69,9 @@ p {
 .app {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  /* The office never gets squeezed under its minimum: on short windows the page
+     scrolls instead of the office sliding over the task box. */
+  grid-template-rows: auto minmax(440px, 1fr) auto;
   gap: 12px;
   height: 100%;
   padding: 12px 16px 16px;
@@ -1100,7 +1102,13 @@ button.queue-item:hover {
   }
   .task {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
+  }
+  /* In a column, a 100% basis would mean full height. */
+  .task-blocked,
+  .task-question {
+    flex-basis: auto;
   }
   .task-actions {
     justify-content: flex-end;
@@ -1360,7 +1368,8 @@ button.queue-item:hover {
     max-width: 240px;
     opacity: 1;
   }
-  .desk-tag.is-open:not(:hover, :focus-visible, .is-selected) .desk-tag-role {
+  .desk-tag.is-open:not(:hover, :focus-visible, .is-selected) .desk-tag-role,
+  .desk-tag.is-open:not(:hover, :focus-visible, .is-selected) .desk-tag-model {
     display: none;
   }
 }
@@ -1596,4 +1605,144 @@ button.queue-item:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------- Phase 2b: model labels, metrics, clarification ---------- */
+
+/* "gemini · gemini-3.6-flash": desks, report header and footer, totals. */
+.model-tag {
+  display: inline-block;
+  max-width: 100%;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.report-head-text .model-tag {
+  display: block;
+}
+.desk-tag-model {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.usage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 0;
+}
+.usage > * + *::before {
+  content: '·';
+  margin: 0 6px;
+  color: var(--line-strong, var(--muted));
+}
+
+.totals {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.totals summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.totals .hint {
+  margin: 4px 0 0;
+}
+.totals table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.totals th,
+.totals td {
+  padding: 4px 6px;
+  text-align: right;
+  border-top: 1px solid var(--line);
+}
+.totals thead th {
+  border-top: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+.totals th:first-child {
+  text-align: left;
+  max-width: 0;
+  width: 45%;
+}
+.totals tfoot th,
+.totals tfoot td {
+  font-weight: 700;
+}
+
+/* The coordinator's questions above the task box. */
+.task-question {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--status-review) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  font-size: 13px;
+}
+.task-question-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1e2328;
+}
+.task-question p {
+  margin: 2px 0 0;
+}
+.task-question ol {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+.task-question li + li {
+  margin-top: 2px;
+}
+.task.is-asking textarea {
+  border-color: var(--accent);
+}
+
+.queue-item.is-question {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.queue-item.is-question .queue-summary {
+  -webkit-line-clamp: 3;
+}
+.tag-question {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px 4px;
+}
+
+.log-questions {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+/* The "?" in the coordinator's bubble is a little bigger than "!". */
+.desk-tag.activity-asking .desk-tag-badge b {
+  font-size: 14px;
 }

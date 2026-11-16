@@ -24,6 +24,8 @@ interface Props {
   status: string;
   /** Tooltip when the tag can be opened, e.g. "Open report of Mira". */
   openLabel: string;
+  /** The model this agent runs on, e.g. "gemini · gemini-3.6-flash". */
+  model: string;
   selected: boolean;
   onOpen?: () => void;
   /** Called with the anchor element so the projector can position it. */
@@ -47,6 +49,7 @@ const GLYPH: Record<SceneActivity, ReactNode> = {
   idle: <Coffee {...ICON} />,
   notNeeded: null,
   planning: dots,
+  asking: <b>?</b>,
   coordinating: <Network {...ICON} />,
   waiting: <Hourglass {...ICON} />,
   working: dots,
@@ -59,7 +62,7 @@ const GLYPH: Record<SceneActivity, ReactNode> = {
 };
 
 /** Bubbles that stay open without hovering: they need the user. */
-const ATTENTION: ReadonlySet<SceneActivity> = new Set(['review', 'failed']);
+const ATTENTION: ReadonlySet<SceneActivity> = new Set(['review', 'failed', 'asking']);
 
 /**
  * A status bubble above a desk: name and a status badge, opening to show the role
@@ -74,6 +77,7 @@ export function DeskTag({
   tone,
   status,
   openLabel,
+  model,
   selected,
   onOpen,
   register,
@@ -115,6 +119,7 @@ export function DeskTag({
             <span className="desk-tag-more-inner">
               <span className="desk-tag-role">{agent.role[lang]}</span>
               <span className="desk-tag-status">{status}</span>
+              <span className="desk-tag-model">{model}</span>
             </span>
           </span>
         </span>

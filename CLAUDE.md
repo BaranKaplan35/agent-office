@@ -86,17 +86,24 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
   (`gemini`, `anthropic`, `ollama`, `openrouter` + `http.ts`), `mock.ts`, `errors.ts`
   (`LLMError`: "provider · model: reason", retryable or not), `retry.ts` (backoff),
   `planSchema.ts` (structured plan output), `preflight.ts` (startup check: keys, Ollama
-  running, model pulled → unavailable agents), `limiter.ts`
+  running, model pulled → unavailable agents), `usage.ts` (token counts; missing stays
+  missing), `limiter.ts`. The router adds `provider`, `model` and `durationMs` to every
+  answer; the orchestrator stores them as `CallMetrics`
 - `server/src/orchestrator/orchestrator.ts` — task/subtask state machine, scheduling,
   revisions, merge, cancel, timeouts, event publishing
-- `server/src/orchestrator/prompts.ts` — plan / work / revision / merge prompts;
-  `planParser.ts` — sanitises the coordinator's JSON plan (falls back to `defaultPlan`)
+- `server/src/orchestrator/prompts.ts` — plan / work / revision / merge prompts (the plan
+  prompt lets the coordinator ask first; answers reach workers and the merge);
+  `planParser.ts` — `parseCoordinatorAnswer` (plan or question round) and the plan
+  sanitiser (falls back to `defaultPlan`)
 - `server/src/http/` — `routes.ts` (REST), `sse.ts` (event stream), `errors.ts`
 - `server/src/test/fixtures.ts` — test team, scripted providers, `waitFor` helper
 - `client/src/state/store.ts` — Zustand store: teams, current task, selection, review
   commands (approve/revise/retry/cancel); remembers team + task id in localStorage
 - `client/src/state/selectors.ts` — pure derivations: `agentActivity` (what each agent is
-  doing — the 3D office must reuse it), review queue, report model, export filename
+  doing — the 3D office must reuse it; `asking` while the coordinator waits for an
+  answer), `openClarification`, `requestText`, review queue, report model, export filename
+- `client/src/state/metrics.ts` — model labels, token / duration formatting, task totals
+  (pure, tested); `panels/TaskTotals.tsx` shows the totals with the final output
 - `client/src/api/useTaskStream.ts` — SSE with heartbeat watchdog; drops tasks the server
   forgot (restart) with a message
 - `client/src/panels/` — review queue, report viewer (versions, approve, revise, export),
@@ -139,6 +146,8 @@ openrouter`, one adapter each in `llm/providers/`. Each agent may set `llm: { pr
 
 - `GET /health` · `GET /teams` · `GET /teams/:teamId` (public view, no prompts)
 - `POST /tasks {teamId, prompt, lang}` → `201 {taskId}` · `GET /tasks/:id` (snapshot)
+- `POST /tasks/:id/clarify {answer}` — answer the coordinator's questions (status
+  `awaiting_clarification`); planning continues with the answer
 - `GET /tasks/:id/events` — SSE; first event is a snapshot, then one event per change
 - `POST /tasks/:id/subtasks/:subId/{approve|revise|retry}` (`revise` body: `{note}`)
 - `POST /tasks/:id/final/{approve|revise|retry}` · `POST /tasks/:id/cancel`
@@ -168,6 +177,6 @@ the current phase is finished, never mid-phase.
 - [x] Phase 1c-3 — flying envelopes, full status bubbles, camera controls + focus, reduced motion, perf
 - [x] Phase 1c-4 — office life: motion setting, personalities, conversations, idle behaviours, work breaks, lounge/printer/whiteboard/water cooler
 - [x] Phase 2a — provider layer (gemini, anthropic, ollama, openrouter), per-agent `llm` in YAML, startup preflight
-- [ ] Phase 2b — model labels on desks/reports, per-report tokens + duration, mixed-team README example
+- [x] Phase 2b — model labels on desks/reports, per-report tokens + duration, task totals, clarification step, mixed-team README example
 - [ ] Polish — see the list at the end of `docs/PLAN.md`
 - [ ] Phase 3 — README, CI, third config-only template, optional plan approval, deploy

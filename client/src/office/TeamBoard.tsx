@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { AgentAvatar } from '../components/AgentAvatar';
 import { StatusChip } from '../components/StatusChip';
 import { useI18n } from '../i18n/context';
+import { modelLabel } from '../state/metrics';
 import {
   activityTone,
   agentActivity,
@@ -11,6 +12,7 @@ import {
   type Selection,
 } from '../state/selectors';
 import { useApp } from '../state/store';
+import { TASK_INPUT_ID } from '../panels/TaskInput';
 import { TaskHeader } from './TaskHeader';
 
 interface DeskProps {
@@ -36,6 +38,7 @@ function Desk({ agent, task, lang, hub, selected, onOpen }: DeskProps) {
       <span className="desk-text">
         <span className="desk-name">{agent.name[lang]}</span>
         <span className="desk-role">{agent.role[lang]}</span>
+        <span className="model-tag">{modelLabel(agent.llm)}</span>
       </span>
       <span className="desk-status">
         <StatusChip tone={activityTone(activity)} label={t(`activity.${activity}`)} />
@@ -48,6 +51,20 @@ function Desk({ agent, task, lang, hub, selected, onOpen }: DeskProps) {
 
   const className = `desk${hub ? ' desk-hub' : ''}${isSelected ? ' is-selected' : ''} tone-${activityTone(activity)}`;
   const style = { '--agent': agent.deskColor } as CSSProperties;
+
+  if (!selection && activity === 'asking') {
+    return (
+      <button
+        type="button"
+        className={className}
+        style={style}
+        onClick={() => document.getElementById(TASK_INPUT_ID)?.focus()}
+        aria-label={t('office.answerQuestions', { name: agent.name[lang] })}
+      >
+        {content}
+      </button>
+    );
+  }
 
   return selection ? (
     <button

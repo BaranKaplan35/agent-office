@@ -49,6 +49,8 @@ export const api = {
   task: (taskId: string) => request<Task>(`/tasks/${enc(taskId)}`),
   createTask: (body: CreateTaskRequest) => post<CreateTaskResponse>('/tasks', body),
   cancel: (taskId: string) => post<Task>(`/tasks/${enc(taskId)}/cancel`),
+  clarify: (taskId: string, answer: string) =>
+    post<Task>(`/tasks/${enc(taskId)}/clarify`, { answer }),
 
   approve: (taskId: string, subId: string) =>
     post<Task>(`/tasks/${enc(taskId)}/subtasks/${enc(subId)}/approve`),

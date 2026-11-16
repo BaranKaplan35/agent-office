@@ -36,6 +36,10 @@ export function MessageLog() {
 
   const describe = (m: AgentMessage): string => {
     switch (m.type) {
+      case 'clarification':
+        return t('log.clarification');
+      case 'clarification_answer':
+        return t('log.clarification_answer');
       case 'plan':
         return t('log.plan', { n: m.payload.subtasks.length });
       case 'assignment':
@@ -62,6 +66,12 @@ export function MessageLog() {
             <strong>{who(m.from)}</strong>
             {m.to !== 'user' && m.to !== m.from && <> → {who(m.to)}</>}: {describe(m)}
             {m.type === 'revision_request' && <q className="log-note">{m.payload.note}</q>}
+            {m.type === 'clarification' && (
+              <span className="log-questions">
+                {[m.payload.reply, ...m.payload.questions].filter(Boolean).join(' ')}
+              </span>
+            )}
+            {m.type === 'clarification_answer' && <q className="log-note">{m.payload.answer}</q>}
           </span>
         </li>
       ))}

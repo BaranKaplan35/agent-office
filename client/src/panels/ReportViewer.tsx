@@ -6,12 +6,15 @@ import { useI18n } from '../i18n/context';
 import {
   exportFilename,
   findAgent,
+  requestText,
   reviewableFor,
   revisionsLeft,
   type ActivityTone,
   type ReviewableState,
 } from '../state/selectors';
+import { formatDuration, formatTokens, modelLabel } from '../state/metrics';
 import { useApp, useCurrentTeam } from '../state/store';
+import { TaskTotals } from './TaskTotals';
 
 const MAX_NOTE = 2000;
 
@@ -130,6 +133,7 @@ export function ReportViewer() {
           <span className="report-agent">
             {name} · {agent?.role[lang]}
           </span>
+          {agent && <span className="model-tag">{modelLabel(agent.llm)}</span>}
         </div>
         <StatusChip tone={STATE_TONE[item.state]} label={t(STATE_LABEL[item.state])} />
       </header>
@@ -195,14 +199,23 @@ export function ReportViewer() {
             </aside>
           )}
           <Markdown text={shown.markdown} />
-          {shown.usage && (
-            <p className="usage">
-              {t('report.tokens', {
-                input: shown.usage.inputTokens,
-                output: shown.usage.outputTokens,
-              })}
+          {shown.metrics && (
+            <p className="usage" aria-label={t('report.metrics')}>
+              <span className="model-tag">{modelLabel(shown.metrics)}</span>
+              {shown.metrics.usage ? (
+                <span>
+                  {t('report.tokenCounts', {
+                    input: formatTokens(shown.metrics.usage.inputTokens, lang),
+                    output: formatTokens(shown.metrics.usage.outputTokens, lang),
+                  })}
+                </span>
+              ) : (
+                <span title={t('report.tokensUnknownHint')}>{t('report.tokensUnknown')}</span>
+              )}
+              <span>{formatDuration(shown.metrics.durationMs, lang)}</span>
             </p>
           )}
+          {isFinal && <TaskTotals task={task} />}
         </div>
       )}
 
@@ -282,7 +295,7 @@ export function ReportViewer() {
               <button
                 type="button"
                 className="btn-ghost"
-                onClick={() => downloadMarkdown(exportFilename(task.prompt), shown.markdown)}
+                onClick={() => downloadMarkdown(exportFilename(requestText(task)), shown.markdown)}
               >
                 {t('report.export')}
               </button>
