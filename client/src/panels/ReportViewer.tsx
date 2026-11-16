@@ -191,6 +191,11 @@ export function ReportViewer() {
             </aside>
           )}
           <Markdown text={shown.markdown} />
+          {shown.truncated && (
+            <p className="truncated-note" role="note">
+              {t('report.truncated')}
+            </p>
+          )}
           {shown.metrics && (
             <p className="usage" aria-label={t('report.metrics')}>
               <span className="model-tag">{modelLabel(shown.metrics)}</span>

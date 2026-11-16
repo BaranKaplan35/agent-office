@@ -130,6 +130,7 @@ export function createGeminiProvider(options: GeminiOptions): LLMProvider {
             ? undefined
             : (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
         ),
+        ...(res.candidates?.[0]?.finishReason === 'MAX_TOKENS' ? { truncated: true } : {}),
       };
     },
   };

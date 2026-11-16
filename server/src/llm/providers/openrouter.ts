@@ -72,6 +72,7 @@ export function createOpenRouterProvider(options: OpenRouterOptions): LLMProvide
       return {
         text: data.choices?.[0]?.message?.content ?? '',
         usage: toUsage(data.usage?.prompt_tokens, data.usage?.completion_tokens),
+        ...(data.choices?.[0]?.finish_reason === 'length' ? { truncated: true } : {}),
       };
     },
   };

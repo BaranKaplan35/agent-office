@@ -335,3 +335,25 @@ describe('final document title', () => {
     expect(done.final!.versions[0]!.markdown.startsWith('# Final Pack\n\nSummary.')).toBe(true);
   });
 });
+
+describe('cut-off reports', () => {
+  it('marks a report version that stopped at the output limit', async () => {
+    const llm = scripted(instantMock(), (req) =>
+      req.meta.kind === 'work' && req.meta.agent.id === 'a'
+        ? Promise.resolve({ text: '# Half a rep', truncated: true })
+        : undefined,
+    );
+    const { orchestrator, create } = setup({ llm });
+    const { id } = create();
+    const task = await waitFor(
+      orchestrator,
+      id,
+      (t) =>
+        t.subtasks.length > 0 &&
+        t.subtasks.every((s) => s.assignee === 'b' || s.versions.length > 0),
+    );
+    const byAgent = Object.fromEntries(task.subtasks.map((s) => [s.assignee, s.versions[0]]));
+    expect(byAgent.a?.truncated).toBe(true);
+    expect(byAgent.c?.truncated).toBeUndefined();
+  });
+});

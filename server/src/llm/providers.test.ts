@@ -494,3 +494,53 @@ describe('ollama context window', () => {
     expect(parseEnv({}).OLLAMA_NUM_CTX).toBe(16384);
   });
 });
+
+// ------------------------------------------------------------ cut-off reports
+
+describe('answers that stop at the output limit', () => {
+  it('every adapter reports them as truncated', async () => {
+    const gemini = createGeminiProvider({
+      apiKey: 'k',
+      models: {
+        generateContent: async () => ({
+          text: 'Half a sent',
+          candidates: [{ finishReason: 'MAX_TOKENS' }],
+        }),
+      } as unknown as GeminiModels,
+    });
+    expect((await gemini.generate(work())).truncated).toBe(true);
+
+    const anthropic = createAnthropicProvider({
+      apiKey: 'k',
+      messages: {
+        create: async () => ({
+          content: [{ type: 'text', text: 'Half' }],
+          stop_reason: 'max_tokens',
+        }),
+      },
+    });
+    expect((await anthropic.generate(work())).truncated).toBe(true);
+
+    const ollama = fakeFetch(() => json({ message: { content: 'Half' }, done_reason: 'length' }));
+    expect(
+      (await createOllamaProvider({ baseUrl: 'http://x', fetch: ollama.fn }).generate(work()))
+        .truncated,
+    ).toBe(true);
+
+    const openrouter = fakeFetch(() =>
+      json({ choices: [{ message: { content: 'Half' }, finish_reason: 'length' }] }),
+    );
+    expect(
+      (await createOpenRouterProvider({ apiKey: 'k', fetch: openrouter.fn }).generate(work()))
+        .truncated,
+    ).toBe(true);
+  });
+
+  it('a normal stop is not truncated', async () => {
+    const ollama = fakeFetch(() => json({ message: { content: 'Done.' }, done_reason: 'stop' }));
+    const res = await createOllamaProvider({ baseUrl: 'http://x', fetch: ollama.fn }).generate(
+      work(),
+    );
+    expect(res.truncated).toBeUndefined();
+  });
+});

@@ -706,6 +706,7 @@ export class Orchestrator {
       createdAt: this.timestamp(),
       ...(note !== undefined ? { revisionNote: note } : {}),
       metrics: res.metrics,
+      ...(res.truncated ? { truncated: true } : {}),
     };
   }
 

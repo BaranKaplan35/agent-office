@@ -102,6 +102,7 @@
   "report.export": ".md olarak indir",
   "report.copy": "Kopyala",
   "report.copied": "Kopyalandı",
+  "report.truncated": "Bu versiyon uzunluk sınırında durdu; sonu eksik olabilir. Daha kısa bir revizyon iste ya da ekip dosyasında settings.maxOutputTokens değerini artır.",
   "report.metrics": "Bu versiyonun modeli, token sayısı ve süresi",
   "report.tokenCounts": "{{input}} giriş / {{output}} çıkış",
   "report.tokensUnknown": "token —",

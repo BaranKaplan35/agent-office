@@ -80,6 +80,7 @@ export function createOllamaProvider(options: OllamaOptions): LLMProvider {
       return {
         text: data.message?.content ?? '',
         usage: toUsage(data.prompt_eval_count, data.eval_count),
+        ...(data.done_reason === 'length' ? { truncated: true } : {}),
       };
     },
   };
